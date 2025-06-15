@@ -5,15 +5,22 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lead } from "@/lib/types/database";
+import { Lead, LeadStatus } from "@/lib/types/database";
 import { formatDistanceToNow } from "date-fns";
-import { MoreHorizontal, Edit, Trash2, Mail } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Mail, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LeadsTableProps {
   leads: (Lead & { forms?: { name: string } })[];
@@ -21,6 +28,55 @@ interface LeadsTableProps {
 
 export function LeadsTable({ leads }: LeadsTableProps) {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
+    setIsUpdating(leadId);
+    try {
+      const response = await fetch(`/api/leads/${leadId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      // Refresh the page to show updated data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating lead status:', error);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const updateBulkStatus = async (newStatus: LeadStatus) => {
+    setIsUpdating('bulk');
+    try {
+      const response = await fetch('/api/leads/bulk-update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ leadIds: selectedLeads, status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update statuses');
+      }
+
+      // Refresh the page to show updated data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating lead statuses:', error);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -121,9 +177,36 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={getStatusColor(lead.status)}>
-                      {lead.status}
-                    </Badge>
+                    <Select
+                      value={lead.status}
+                      onValueChange={(value) => updateLeadStatus(lead.id, value as LeadStatus)}
+                      disabled={isUpdating === lead.id}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue>
+                          <Badge className={getStatusColor(lead.status)}>
+                            {lead.status}
+                          </Badge>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unqualified">
+                          <Badge className={getStatusColor('unqualified')}>
+                            unqualified
+                          </Badge>
+                        </SelectItem>
+                        <SelectItem value="qualified">
+                          <Badge className={getStatusColor('qualified')}>
+                            qualified
+                          </Badge>
+                        </SelectItem>
+                        <SelectItem value="trash">
+                          <Badge className={getStatusColor('trash')}>
+                            trash
+                          </Badge>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -151,6 +234,13 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                           <Mail className="mr-2 h-4 w-4" />
                           Send Email
                         </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => updateLeadStatus(lead.id, lead.status === 'qualified' ? 'unqualified' : 'qualified')}
+                          disabled={isUpdating === lead.id}
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          {lead.status === 'qualified' ? 'Mark Unqualified' : 'Mark Qualified'}
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600">
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
@@ -171,14 +261,39 @@ export function LeadsTable({ leads }: LeadsTableProps) {
             <span className="text-sm text-blue-600 dark:text-blue-400">
               {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''} selected
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Button size="sm" variant="outline">
                 <Mail className="h-4 w-4 mr-2" />
                 Send Bulk Email
               </Button>
-              <Button size="sm" variant="outline">
-                Update Status
-              </Button>
+              <Select onValueChange={(value) => updateBulkStatus(value as LeadStatus)} disabled={isUpdating === 'bulk'}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Update Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unqualified">
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor('unqualified')}>
+                        unqualified
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="qualified">
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor('qualified')}>
+                        qualified
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="trash">
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor('trash')}>
+                        trash
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

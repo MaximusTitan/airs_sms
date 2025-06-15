@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { LeadsHeader } from "@/components/leads/leads-header";
+import { redirect } from "next/navigation";
+
+export const dynamic = 'force-dynamic';
 
 export default async function LeadsPage() {
   const supabase = await createClient();
@@ -10,7 +13,7 @@ export default async function LeadsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return null;
+    redirect('/auth/login');
   }
 
   // Fetch leads with form information
