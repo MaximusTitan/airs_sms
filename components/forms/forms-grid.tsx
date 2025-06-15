@@ -1,24 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/lib/types/database";
 import { formatDistanceToNow } from "date-fns";
-import { Eye, Edit, Copy, MoreHorizontal, ExternalLink } from "lucide-react";
+import { Eye, Edit, Copy, MoreHorizontal, ExternalLink, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 interface FormsGridProps {
   forms: (Form & { leads?: { count: number }[] })[];
 }
 
 export function FormsGrid({ forms }: FormsGridProps) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const getLeadCount = (form: Form & { leads?: { count: number }[] }) => {
     return form.leads?.[0]?.count || 0;
   };
@@ -27,6 +35,30 @@ export function FormsGrid({ forms }: FormsGridProps) {
     const url = `${window.location.origin}/forms/${formId}`;
     navigator.clipboard.writeText(url);
     // You could add a toast notification here
+  };
+
+  const deleteForm = async (formId: string) => {
+    if (!confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingId(formId);
+    try {
+      const { error } = await supabase
+        .from('forms')
+        .delete()
+        .eq('id', formId);
+
+      if (error) throw error;
+
+      // Refresh the page to update the forms list
+      router.refresh();
+    } catch (error) {
+      console.error('Error deleting form:', error);
+      alert('Failed to delete form. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -89,10 +121,17 @@ export function FormsGrid({ forms }: FormsGridProps) {
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
                     </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => copyFormUrl(form.id)}>
+                  </DropdownMenuItem>                  <DropdownMenuItem onClick={() => copyFormUrl(form.id)}>
                     <Copy className="mr-2 h-4 w-4" />
                     Copy URL
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => deleteForm(form.id)}
+                    className="text-red-600 hover:text-red-700 focus:text-red-700"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {deletingId === form.id ? 'Deleting...' : 'Delete'}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
