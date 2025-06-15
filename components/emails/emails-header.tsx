@@ -15,16 +15,15 @@ export function EmailsHeader() {
           Send and manage email campaigns
         </p>
       </div>
-      
-      <div className="flex gap-3">
+        <div className="flex gap-3">
         <Link href="/dashboard/emails/templates">
-          <Button variant="outline" className="flex items-center gap-2 border-border hover:bg-accent">
+          <Button variant="outline" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
             Templates
           </Button>
         </Link>
         <Link href="/dashboard/emails/compose">
-          <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90 h-11 px-6 font-medium">
+          <Button className="flex items-center gap-2 h-11 px-6 font-medium">
             <Plus className="h-4 w-4" />
             Compose Email
           </Button>

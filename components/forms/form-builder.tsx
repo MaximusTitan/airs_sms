@@ -236,13 +236,12 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
                 <GripVertical className="h-5 w-5 text-gray-400 mt-2" />
                 
                 <div className="flex-1 space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">                    <div>
                       <Label>Field Type</Label>
                       <select
                         value={field.type}
                         onChange={(e) => updateField(field.id, { type: e.target.value as FormField['type'] })}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground"
                       >
                         {fieldTypes.map(type => (
                           <option key={type.value} value={type.value}>
@@ -277,7 +276,7 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
                         onChange={(e) => updateField(field.id, { 
                           options: e.target.value.split('\n')
                         })}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground resize-none focus:ring-2 focus:ring-ring focus:border-transparent"
                         rows={4}
                         placeholder="Option 1
 Option 2

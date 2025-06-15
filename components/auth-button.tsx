@@ -9,11 +9,12 @@ export async function AuthButton() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   return user ? (
     <div className="flex items-center gap-4">
-      Hey, {user.email}!
-      <LogoutButton />
+      <span className="text-sm text-muted-foreground">
+        {user.email}
+      </span>
+      <LogoutButton iconOnly size="sm" variant="ghost" />
     </div>
   ) : (
     <div className="flex gap-2">

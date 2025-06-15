@@ -114,7 +114,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
   };
 
   return (
-    <Card className="overflow-hidden bg-card border-border shadow-sm">
+    <Card className="overflow-hidden shadow-sm">
       <Table>
         <TableHeader className="bg-accent/50">
           <TableRow>
@@ -167,32 +167,31 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     {lead.phone || 'N/A'}
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4">
-                  <Select
+                <TableCell className="px-6 py-4">                  <Select
                     value={lead.status}
                     onValueChange={(value) => updateLeadStatus(lead.id, value as LeadStatus)}
                     disabled={isUpdating === lead.id}
                   >
-                    <SelectTrigger className="w-32 border-border">
+                    <SelectTrigger className="w-32">
                       <SelectValue>
-                        <Badge className={`${getStatusColor(lead.status)} border`}>
+                        <Badge className={getStatusColor(lead.status)}>
                           {lead.status}
                         </Badge>
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unqualified">
-                        <Badge className={`${getStatusColor('unqualified')} border`}>
+                        <Badge className={getStatusColor('unqualified')}>
                           unqualified
                         </Badge>
                       </SelectItem>
                       <SelectItem value="qualified">
-                        <Badge className={`${getStatusColor('qualified')} border`}>
+                        <Badge className={getStatusColor('qualified')}>
                           qualified
                         </Badge>
                       </SelectItem>
                       <SelectItem value="trash">
-                        <Badge className={`${getStatusColor('trash')} border`}>
+                        <Badge className={getStatusColor('trash')}>
                           trash
                         </Badge>
                       </SelectItem>
@@ -209,26 +208,24 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-right">
-                  <DropdownMenu>
+                <TableCell className="px-6 py-4 text-right">                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="hover:bg-accent">
+                      <Button variant="ghost" size="sm">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card border-border">
-                      <DropdownMenuItem className="hover:bg-accent">
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="hover:bg-accent">
+                      <DropdownMenuItem>
                         <Mail className="mr-2 h-4 w-4" />
                         Send Email
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => updateLeadStatus(lead.id, lead.status === 'qualified' ? 'unqualified' : 'qualified')}
                         disabled={isUpdating === lead.id}
-                        className="hover:bg-accent"
                       >
                         <Check className="mr-2 h-4 w-4" />
                         {lead.status === 'qualified' ? 'Mark Unqualified' : 'Mark Qualified'}
@@ -245,40 +242,39 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           )}
         </TableBody>
       </Table>
-      
-      {selectedLeads.length > 0 && (
-        <div className="px-6 py-4 bg-primary/10 border-t border-border">
+        {selectedLeads.length > 0 && (
+        <div className="px-6 py-4 bg-primary/10 border-t">
           <div className="flex items-center justify-between">
             <span className="text-sm text-primary font-medium">
               {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''} selected
             </span>
             <div className="flex gap-3 items-center">
-              <Button size="sm" variant="outline" className="border-border hover:bg-accent">
+              <Button size="sm" variant="outline">
                 <Mail className="h-4 w-4 mr-2" />
                 Send Bulk Email
               </Button>
               <Select onValueChange={(value) => updateBulkStatus(value as LeadStatus)} disabled={isUpdating === 'bulk'}>
-                <SelectTrigger className="w-40 border-border">
+                <SelectTrigger className="w-40">
                   <SelectValue placeholder="Update Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-card border-border">
+                <SelectContent>
                   <SelectItem value="unqualified">
                     <div className="flex items-center gap-2">
-                      <Badge className={`${getStatusColor('unqualified')} border`}>
+                      <Badge className={getStatusColor('unqualified')}>
                         unqualified
                       </Badge>
                     </div>
                   </SelectItem>
                   <SelectItem value="qualified">
                     <div className="flex items-center gap-2">
-                      <Badge className={`${getStatusColor('qualified')} border`}>
+                      <Badge className={getStatusColor('qualified')}>
                         qualified
                       </Badge>
                     </div>
                   </SelectItem>
                   <SelectItem value="trash">
                     <div className="flex items-center gap-2">
-                      <Badge className={`${getStatusColor('trash')} border`}>
+                      <Badge className={getStatusColor('trash')}>
                         trash
                       </Badge>
                     </div>

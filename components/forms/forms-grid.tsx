@@ -63,16 +63,15 @@ export function FormsGrid({ forms }: FormsGridProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {forms.length === 0 ? (
-        <div className="col-span-full">
+      {forms.length === 0 ? (        <div className="col-span-full">
           <Card className="p-12 text-center">
-            <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              <Eye className="h-8 w-8 text-gray-400" />
+            <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Eye className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <h3 className="text-lg font-medium text-foreground mb-2">
               No forms yet
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-muted-foreground mb-4">
               Create your first form to start collecting leads
             </p>
             <Link href="/dashboard/forms/new">
@@ -82,14 +81,13 @@ export function FormsGrid({ forms }: FormsGridProps) {
         </div>
       ) : (
         forms.map((form) => (
-          <Card key={form.id} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-4">
+          <Card key={form.id} className="p-6 hover:shadow-lg transition-shadow">            <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                <h3 className="text-lg font-semibold text-foreground mb-1">
                   {form.name}
                 </h3>
                 {form.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <p className="text-sm text-muted-foreground mb-2">
                     {form.description}
                   </p>
                 )}
@@ -97,7 +95,7 @@ export function FormsGrid({ forms }: FormsGridProps) {
                   <Badge variant={form.is_active ? "default" : "secondary"}>
                     {form.is_active ? "Active" : "Inactive"}
                   </Badge>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-sm text-muted-foreground">
                     {getLeadCount(form)} leads
                   </span>
                 </div>
@@ -136,13 +134,12 @@ export function FormsGrid({ forms }: FormsGridProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            
-            <div className="space-y-3">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
                 <span className="font-medium">{form.fields.length}</span> fields
               </div>
               
-              <div className="text-xs text-gray-400 dark:text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 Created {formatDistanceToNow(new Date(form.created_at), { addSuffix: true })}
               </div>
               

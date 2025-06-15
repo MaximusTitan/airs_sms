@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Lead, EmailTemplate } from "@/lib/types/database";
 import { Send, Users, FileText } from "lucide-react";
 
@@ -111,17 +112,16 @@ export function EmailComposer({ leads, templates }: EmailComposerProps) {
             <FileText className="h-5 w-5" />
             Email Templates
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map((template) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">            {templates.map((template) => (
               <div
                 key={template.id}
-                className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
                 onClick={() => handleTemplateSelect(template.id)}
               >
-                <h3 className="font-medium text-gray-900 dark:text-white mb-1">
+                <h3 className="font-medium text-foreground mb-1">
                   {template.name}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <p className="text-sm text-muted-foreground mb-2">
                   {template.subject}
                 </p>
                 <div className="flex flex-wrap gap-1">
@@ -153,18 +153,16 @@ export function EmailComposer({ leads, templates }: EmailComposerProps) {
                   placeholder="Enter email subject"
                 />
               </div>
-              
-              <div>
+                <div>
                 <Label htmlFor="content">Message</Label>
-                <textarea
+                <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Enter your message here..."
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
                   rows={12}
                 />
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Use <code>{"{{name}}"}</code> and <code>{"{{email}}"}</code> for personalization
                 </p>
               </div>
@@ -179,14 +177,13 @@ export function EmailComposer({ leads, templates }: EmailComposerProps) {
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Recipients
-              </h2>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              </h2>              <span className="text-sm text-muted-foreground">
                 {selectedLeads.length} selected
               </span>
             </div>
             
             <div className="space-y-3">
-              <div className="flex items-center space-x-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-2 pb-2 border-b">
                 <Checkbox
                   checked={selectedLeads.length === leads.length && leads.length > 0}
                   onCheckedChange={handleSelectAll}
@@ -196,17 +193,17 @@ export function EmailComposer({ leads, templates }: EmailComposerProps) {
               
               <div className="max-h-96 overflow-y-auto space-y-2">
                 {leads.map((lead) => (
-                  <div key={lead.id} className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded">
+                  <div key={lead.id} className="flex items-center justify-between p-2 hover:bg-accent rounded">
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={selectedLeads.includes(lead.id)}
                         onCheckedChange={(checked) => handleLeadSelection(lead.id, checked as boolean)}
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        <p className="text-sm font-medium text-foreground">
                           {lead.name}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           {lead.email}
                         </p>
                       </div>
@@ -230,8 +227,7 @@ export function EmailComposer({ leads, templates }: EmailComposerProps) {
               <Send className="h-4 w-4 mr-2" />
               {isSending ? 'Sending...' : `Send to ${selectedLeads.length} recipient${selectedLeads.length !== 1 ? 's' : ''}`}
             </Button>
-            
-            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="mt-4 text-sm text-muted-foreground">
               <p>Preview:</p>
               <p className="font-medium">Subject: {subject || 'No subject'}</p>
               <p>Recipients: {selectedLeads.length} selected</p>

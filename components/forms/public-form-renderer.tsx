@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Form, FormField } from "@/lib/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { CheckCircle } from "lucide-react";
@@ -93,64 +101,60 @@ export function PublicFormRenderer({ form }: PublicFormRendererProps) {
       case 'email':
       case 'phone':
         return (
-          <div key={field.id}>
-            <Label htmlFor={field.id}>
+          <div key={field.id}>            <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>            <Input
+              {field.required && <span className="text-destructive ml-1">*</span>}
+            </Label><Input
               id={field.id}
               type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
               placeholder={field.placeholder}
               value={typeof formData[field.id] === 'string' ? formData[field.id] as string : ''}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
-              className={error ? 'border-red-500' : ''}
+              className={error ? 'border-destructive' : ''}
             />
-            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+            {error && <p className="text-destructive text-sm mt-1">{error}</p>}
           </div>
         );
-        
-      case 'textarea':
-        return (
+          case 'textarea':        return (
           <div key={field.id}>
             <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>            <textarea
+              {field.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            <Textarea
               id={field.id}
               placeholder={field.placeholder}
               value={typeof formData[field.id] === 'string' ? formData[field.id] as string : ''}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
-              className={`w-full mt-1 px-3 py-2 border rounded-md ${
-                error ? 'border-red-500' : 'border-gray-300'
-              } dark:border-gray-600 bg-white dark:bg-gray-800`}
+              className={error ? 'border-destructive' : ''}
               rows={4}
             />
-            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+            {error && <p className="text-destructive text-sm mt-1">{error}</p>}
           </div>
         );
-        
-      case 'select':
+          case 'select':
         return (
           <div key={field.id}>
             <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>            <select
-              id={field.id}
+              {field.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            <Select
               value={typeof formData[field.id] === 'string' ? formData[field.id] as string : ''}
-              onChange={(e) => handleFieldChange(field.id, e.target.value)}
-              className={`w-full mt-1 px-3 py-2 border rounded-md ${
-                error ? 'border-red-500' : 'border-gray-300'
-              } dark:border-gray-600 bg-white dark:bg-gray-800`}
+              onValueChange={(value) => handleFieldChange(field.id, value)}
             >
-              <option value="">Select an option</option>
-              {field.options?.map(option => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+              <SelectTrigger className={error ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select an option" />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map(option => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {error && <p className="text-destructive text-sm mt-1">{error}</p>}
           </div>
         );
         
@@ -160,12 +164,11 @@ export function PublicFormRenderer({ form }: PublicFormRendererProps) {
               id={field.id}
               checked={typeof formData[field.id] === 'boolean' ? formData[field.id] as boolean : false}
               onCheckedChange={(checked) => handleFieldChange(field.id, checked as boolean)}
-            />
-            <Label htmlFor={field.id}>
+            />            <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+            {error && <p className="text-destructive text-sm mt-1">{error}</p>}
           </div>
         );
         
@@ -173,17 +176,16 @@ export function PublicFormRenderer({ form }: PublicFormRendererProps) {
         return null;
     }
   };
-
   if (isSubmitted) {
     return (
       <div className="text-center py-8">
-        <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+        <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <CheckCircle className="h-8 w-8 text-green-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <h2 className="text-2xl font-bold text-foreground mb-2">
           Thank you!
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-muted-foreground">
           Your information has been submitted successfully. We&apos;ll get back to you soon.
         </p>
       </div>
