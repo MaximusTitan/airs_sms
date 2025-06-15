@@ -13,9 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Lead, LeadStatus } from "@/lib/types/database";
-import { formatDistanceToNow } from "date-fns";
-import { MoreHorizontal, Edit, Trash2, Mail, Check } from "lucide-react";
+import { Lead, LeadStatus, FormField } from "@/lib/types/database";
+import { formatDistanceToNow, format } from "date-fns";
+import { MoreHorizontal, Edit, Trash2, Mail, Check, ChevronDown, ChevronRight, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,11 +31,12 @@ import {
 } from "@/components/ui/select";
 
 interface LeadsTableProps {
-  leads: (Lead & { forms?: { name: string } })[];
+  leads: (Lead & { forms?: { name: string; fields: FormField[] } })[];
 }
 
 export function LeadsTable({ leads }: LeadsTableProps) {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
   const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
@@ -113,17 +114,73 @@ export function LeadsTable({ leads }: LeadsTableProps) {
     }
   };
 
+  const toggleExpandLead = (leadId: string) => {
+    setExpandedLeads(prev => 
+      prev.includes(leadId) 
+        ? prev.filter(id => id !== leadId)
+        : [...prev, leadId]
+    );
+  };
+  const renderFormData = (formData: Record<string, string | boolean | number>, formFields?: FormField[]) => {
+    if (!formData || Object.keys(formData).length === 0) {
+      return <span className="text-muted-foreground text-sm">No additional data</span>;
+    }
+
+    // Create a map of field IDs to field labels for quick lookup
+    const fieldLabelMap = formFields?.reduce((acc, field) => {
+      acc[field.id] = field.label;
+      return acc;
+    }, {} as Record<string, string>) || {};
+
+    return (
+      <div className="space-y-2">
+        {Object.entries(formData).map(([key, value]) => {
+          // Use the field label if available, otherwise format the key
+          const displayLabel = fieldLabelMap[key] || key.replace(/[_-]/g, ' ');
+          
+          return (
+            <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1">
+              <span className="text-sm font-medium text-foreground min-w-0 capitalize">
+                {displayLabel}:
+              </span>
+              <span className="text-sm text-muted-foreground break-words">
+                {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderTags = (tags: string[]) => {
+    if (!tags || tags.length === 0) {
+      return <span className="text-muted-foreground text-sm">No tags</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {tags.map((tag, index) => (
+          <Badge key={index} variant="secondary" className="text-xs">
+            {tag}
+          </Badge>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Card className="overflow-hidden shadow-sm">
       <Table>
         <TableHeader className="bg-accent/50">
           <TableRow>
-            <TableHead className="px-6 py-4">
+            <TableHead className="px-6 py-4 w-12">
               <Checkbox 
                 checked={selectedLeads.length === leads.length && leads.length > 0}
                 onCheckedChange={handleSelectAll}
               />
             </TableHead>
+            <TableHead className="px-6 py-4 w-12"></TableHead>
             <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Name</TableHead>
             <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Email</TableHead>
             <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Phone</TableHead>
@@ -136,21 +193,34 @@ export function LeadsTable({ leads }: LeadsTableProps) {
         <TableBody>
           {leads.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="px-6 py-12 text-center">
+              <TableCell colSpan={9} className="px-6 py-12 text-center">
                 <div className="text-muted-foreground">
                   <p className="text-lg font-medium">No leads found</p>
                   <p className="text-sm">Create a form to start collecting leads</p>
                 </div>
               </TableCell>
             </TableRow>
-          ) : (
-            leads.map((lead) => (
+          ) : (            leads.flatMap((lead) => [
               <TableRow key={lead.id} className="hover:bg-accent/30 transition-colors">
                 <TableCell className="px-6 py-4">
                   <Checkbox 
                     checked={selectedLeads.includes(lead.id)}
                     onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
                   />
+                </TableCell>
+                <TableCell className="px-6 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleExpandLead(lead.id)}
+                    className="p-1"
+                  >
+                    {expandedLeads.includes(lead.id) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </Button>
                 </TableCell>
                 <TableCell className="px-6 py-4">
                   <div className="text-sm font-medium text-foreground">
@@ -167,7 +237,8 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     {lead.phone || 'N/A'}
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4">                  <Select
+                <TableCell className="px-6 py-4">
+                  <Select
                     value={lead.status}
                     onValueChange={(value) => updateLeadStatus(lead.id, value as LeadStatus)}
                     disabled={isUpdating === lead.id}
@@ -208,13 +279,18 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-right">                  <DropdownMenu>
+                <TableCell className="px-6 py-4 text-right">
+                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => toggleExpandLead(lead.id)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        {expandedLeads.includes(lead.id) ? 'Hide Details' : 'View Details'}
+                      </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
@@ -237,12 +313,99 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
-              </TableRow>
-            ))
+              </TableRow>,
+              ...(expandedLeads.includes(lead.id) ? [
+                <TableRow key={`${lead.id}-expanded`}>
+                  <TableCell colSpan={9} className="px-6 py-6 bg-accent/20">
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Lead Information */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Lead Information</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Full Name:</span>
+                              <span className="text-sm text-muted-foreground ml-2">{lead.name}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Email:</span>
+                              <span className="text-sm text-muted-foreground ml-2">{lead.email}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Phone:</span>
+                              <span className="text-sm text-muted-foreground ml-2">{lead.phone || 'Not provided'}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Source:</span>
+                              <span className="text-sm text-muted-foreground ml-2">{lead.forms?.name || lead.source || 'Direct'}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Status:</span>
+                              <Badge className={`ml-2 ${getStatusColor(lead.status)}`}>
+                                {lead.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Timestamps */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Timeline</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Created:</span>
+                              <div className="text-sm text-muted-foreground ml-2">
+                                {format(new Date(lead.created_at), 'PPpp')}
+                                <br />
+                                <span className="text-xs text-muted-foreground">
+                                  ({formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })})
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Last Updated:</span>
+                              <div className="text-sm text-muted-foreground ml-2">
+                                {format(new Date(lead.updated_at), 'PPpp')}
+                                <br />
+                                <span className="text-xs text-muted-foreground">
+                                  ({formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })})
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Tags</h4>
+                        {renderTags(lead.tags)}
+                      </div>
+
+                      {/* Notes */}
+                      {lead.notes && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Notes</h4>
+                          <div className="p-3 bg-background rounded-md border">
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lead.notes}</p>
+                          </div>
+                        </div>
+                      )}                      {/* Form Data */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Form Submission Data</h4>
+                        <div className="p-3 bg-background rounded-md border">
+                          {renderFormData(lead.form_data, lead.forms?.fields)}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ] : [])
+            ])
           )}
         </TableBody>
       </Table>
-        {selectedLeads.length > 0 && (
+      {selectedLeads.length > 0 && (
         <div className="px-6 py-4 bg-primary/10 border-t">
           <div className="flex items-center justify-between">
             <span className="text-sm text-primary font-medium">

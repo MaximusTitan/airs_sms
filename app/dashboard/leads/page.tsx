@@ -15,14 +15,14 @@ export default async function LeadsPage() {
   if (!user) {
     redirect('/auth/login');
   }
-
-  // Fetch leads with form information
+  // Fetch leads with form information including field definitions
   const { data: leads } = await supabase
     .from('leads')
     .select(`
       *,
       forms (
-        name
+        name,
+        fields
       )
     `)
     .eq('user_id', user.id)
