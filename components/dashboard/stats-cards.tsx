@@ -16,8 +16,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       title: "Total Leads",
       value: stats.totalLeads,
       icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
+      color: "text-primary",
+      bgColor: "bg-primary/10",
     },
     {
       title: "Qualified Leads",
@@ -37,8 +37,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       title: "Emails Sent",
       value: stats.emailsSent,
       icon: Mail,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
+      color: "text-amber-600",
+      bgColor: "bg-amber-100",
     },
   ];
 
@@ -47,17 +47,17 @@ export function StatsCards({ stats }: StatsCardsProps) {
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <Card key={card.title} className="p-6">
+          <Card key={card.title} className="p-6 bg-card border-border shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground mb-2">
                   {card.title}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-3xl font-bold text-foreground">
                   {card.value}
                 </p>
               </div>
-              <div className={`p-3 rounded-full ${card.bgColor} dark:bg-opacity-20`}>
+              <div className={`p-3 rounded-full ${card.bgColor}`}>
                 <Icon className={`h-6 w-6 ${card.color}`} />
               </div>
             </div>

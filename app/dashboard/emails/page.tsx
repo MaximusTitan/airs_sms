@@ -26,9 +26,8 @@ export default async function EmailsPage() {
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
-
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8 bg-background min-h-full">
       <EmailsHeader />
       <EmailsList emails={emails || []} templates={templates || []} />
     </div>

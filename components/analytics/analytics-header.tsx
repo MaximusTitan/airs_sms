@@ -1,10 +1,10 @@
 export function AnalyticsHeader() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div className="mb-2">
+      <h1 className="text-3xl font-bold text-foreground mb-2">
         Analytics
       </h1>
-      <p className="text-gray-600 dark:text-gray-400">
+      <p className="text-muted-foreground text-lg">
         Track your lead generation and email campaign performance
       </p>
     </div>

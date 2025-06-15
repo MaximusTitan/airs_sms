@@ -38,13 +38,12 @@ export default async function DashboardPage() {
     totalForms: forms?.length || 0,
     emailsSent: emails?.filter(email => email.status === 'sent').length || 0,
   };
-
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8 bg-background min-h-full">
       <DashboardHeader />
       <StatsCards stats={stats} />
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <LeadsChart leads={leads || []} />
         <RecentLeads leads={leads?.slice(0, 5) || []} />
       </div>

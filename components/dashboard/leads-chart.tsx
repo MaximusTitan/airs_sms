@@ -28,21 +28,34 @@ export function LeadsChart({ leads }: LeadsChartProps) {
       qualified: dayLeads.filter(lead => lead.status === 'qualified').length,
     };
   });
-
   return (
-    <Card className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    <Card className="p-6 bg-card border-border shadow-sm">
+      <h3 className="text-xl font-semibold text-foreground mb-6">
         Leads Overview (Last 7 Days)
       </h3>
       
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="leads" fill="#3B82F6" name="Total Leads" />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis 
+              dataKey="date" 
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+            />
+            <YAxis 
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+            />
+            <Tooltip 
+              contentStyle={{
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '6px',
+                color: 'hsl(var(--foreground))'
+              }}
+            />
+            <Bar dataKey="leads" fill="hsl(var(--primary))" name="Total Leads" />
             <Bar dataKey="qualified" fill="#10B981" name="Qualified" />
           </BarChart>
         </ResponsiveContainer>

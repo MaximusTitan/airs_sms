@@ -45,21 +45,20 @@ export function LoginForm({
       setIsLoading(false);
     }
   };
-
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>
-            Enter your email below to login to your account
+      <Card className="border-border shadow-lg">
+        <CardHeader className="text-center space-y-2">
+          <CardTitle className="text-3xl font-bold text-foreground">Welcome Back</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -67,14 +66,15 @@ export function LoginForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="border-border focus:border-primary focus:ring-primary/20"
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
                   <Link
                     href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                    className="ml-auto inline-block text-sm text-primary hover:text-primary/80 underline-offset-4 hover:underline transition-colors"
                   >
                     Forgot your password?
                   </Link>
@@ -85,18 +85,23 @@ export function LoginForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="border-border focus:border-primary focus:ring-primary/20"
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+              <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium" disabled={isLoading}>
+                {isLoading ? "Signing in..." : "Sign In"}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
+            <div className="mt-6 text-center text-sm">
+              <span className="text-muted-foreground">Don&apos;t have an account? </span>
               <Link
                 href="/auth/sign-up"
-                className="underline underline-offset-4"
+                className="text-primary hover:text-primary/80 underline-offset-4 hover:underline font-medium transition-colors"
               >
                 Sign up
               </Link>

@@ -1,10 +1,10 @@
 export function DashboardHeader() {
   return (
-    <div className="mb-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div className="mb-8">
+      <h1 className="text-3xl font-bold text-foreground mb-2">
         Dashboard
       </h1>
-      <p className="text-gray-600 dark:text-gray-400">
+      <p className="text-muted-foreground text-lg">
         Welcome back! Here&apos;s what&apos;s happening with your sales.
       </p>
     </div>

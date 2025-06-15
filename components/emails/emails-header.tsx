@@ -8,23 +8,23 @@ export function EmailsHeader() {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-3xl font-bold text-foreground">
           Email Management
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-muted-foreground text-lg">
           Send and manage email campaigns
         </p>
       </div>
       
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <Link href="/dashboard/emails/templates">
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button variant="outline" className="flex items-center gap-2 border-border hover:bg-accent">
             <Mail className="h-4 w-4" />
             Templates
           </Button>
         </Link>
         <Link href="/dashboard/emails/compose">
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90 h-11 px-6 font-medium">
             <Plus className="h-4 w-4" />
             Compose Email
           </Button>

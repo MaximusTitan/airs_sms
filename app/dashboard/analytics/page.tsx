@@ -34,9 +34,8 @@ export default async function AnalyticsPage() {
     .from('emails')
     .select('*')
     .eq('user_id', user.id);
-
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8 bg-background min-h-full">
       <AnalyticsHeader />
       <AnalyticsStats leads={leads || []} forms={forms || []} emails={emails || []} />
       <AnalyticsCharts leads={leads || []} />
