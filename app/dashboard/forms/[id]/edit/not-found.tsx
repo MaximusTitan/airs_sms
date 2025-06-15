@@ -1,12 +1,11 @@
 export default function NotFound() {
   return (
     <div className="p-6">
-      <div className="max-w-4xl mx-auto text-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+      <div className="max-w-4xl mx-auto text-center">        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Form Not Found
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          The form you're looking for doesn't exist or you don't have permission to edit it.
+          The form you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
         </p>
         <a 
           href="/dashboard/forms"
