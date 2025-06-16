@@ -22,8 +22,16 @@ export default async function FormPage({ params }: FormPageProps) {
   }
   return (
     <div className="min-h-screen bg-background py-12">
-      <div className="max-w-2xl mx-auto px-4">
-        <div className="bg-card rounded-lg shadow-lg p-8 border">
+      <div className="max-w-2xl mx-auto px-4">        <div className="bg-card rounded-lg shadow-lg p-8 border">
+          {/* Logo Section */}
+          <div className="flex justify-center mb-6">
+            <img 
+              src="https://urjcavadwlpthjfeuvtk.supabase.co/storage/v1/object/public/logo//airs-logo-new-1.avif"
+              alt="AIRS Logo"
+              className="h-12 w-auto"
+            />
+          </div>
+          
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground mb-2">
               {form.name}

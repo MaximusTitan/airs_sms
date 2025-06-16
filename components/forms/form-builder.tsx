@@ -30,12 +30,11 @@ interface FormBuilderProps {
 export function FormBuilder({ initialForm }: FormBuilderProps) {
   const router = useRouter();
   const supabase = createClient();
-    const [formName, setFormName] = useState(initialForm?.name || "");
-  const [formDescription, setFormDescription] = useState(initialForm?.description || "");
-  const [fields, setFields] = useState<FormField[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formName, setFormName] = useState(initialForm?.name || "");  const [formDescription, setFormDescription] = useState(initialForm?.description || "");
+  const [fields, setFields] = useState<FormField[]>([]);  const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
-
+  const [draggedFieldId, setDraggedFieldId] = useState<string | null>(null);
+  const [autoScrollInterval, setAutoScrollInterval] = useState<NodeJS.Timeout | null>(null);
   // Initialize fields after component mounts to avoid hydration issues
   useEffect(() => {
     if (initialForm?.fields) {
@@ -63,6 +62,15 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
     setMounted(true);
   }, [initialForm]);
 
+  // Cleanup auto-scroll interval on unmount
+  useEffect(() => {
+    return () => {
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+      }
+    };
+  }, [autoScrollInterval]);
+
   const addField = () => {
     const newField: FormField = {
       id: generateId(),
@@ -79,9 +87,109 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
       field.id === id ? { ...field, ...updates } : field
     ));
   };
-
   const removeField = (id: string) => {
     setFields(fields.filter(field => field.id !== id));
+  };
+  const handleDragStart = (e: React.DragEvent, fieldId: string) => {
+    setDraggedFieldId(fieldId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', fieldId);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    handleAutoScroll(e);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetFieldId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const draggedId = e.dataTransfer.getData('text/plain');
+    
+    if (!draggedId || draggedId === targetFieldId) {
+      setDraggedFieldId(null);
+      return;
+    }
+
+    const draggedIndex = fields.findIndex(field => field.id === draggedId);
+    const targetIndex = fields.findIndex(field => field.id === targetFieldId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedFieldId(null);
+      return;
+    }
+
+    const newFields = [...fields];
+    const [draggedField] = newFields.splice(draggedIndex, 1);
+    newFields.splice(targetIndex, 0, draggedField);
+
+    setFields(newFields);
+    setDraggedFieldId(null);
+  };
+  const handleDragEnd = () => {
+    setDraggedFieldId(null);
+    if (autoScrollInterval) {
+      clearInterval(autoScrollInterval);
+      setAutoScrollInterval(null);
+    }
+  };
+  const handleAutoScroll = (e: React.DragEvent) => {
+    // Try to find the scrollable container (dashboard layout's scrollable area)
+    let container = document.querySelector('[data-scroll-container]') as HTMLElement;
+    if (!container) {
+      // Fallback to finding the closest scrollable parent
+      container = document.querySelector('main div[class*="overflow-auto"]') as HTMLElement;
+    }
+    if (!container) {
+      // Final fallback to window
+      container = document.documentElement;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const scrollThreshold = 80; // pixels from edge to trigger scroll
+    const scrollSpeed = 15; // pixels per scroll step
+
+    const mouseY = e.clientY;
+    const distanceFromTop = mouseY - containerRect.top;
+    const distanceFromBottom = containerRect.bottom - mouseY;
+
+    // Clear existing interval
+    if (autoScrollInterval) {
+      clearInterval(autoScrollInterval);
+      setAutoScrollInterval(null);
+    }
+
+    // Auto scroll up
+    if (distanceFromTop < scrollThreshold && distanceFromTop > 0) {
+      const interval = setInterval(() => {
+        if (container === document.documentElement) {
+          window.scrollBy(0, -scrollSpeed);
+        } else {
+          container.scrollTop = Math.max(0, container.scrollTop - scrollSpeed);
+        }
+      }, 16); // ~60fps
+      setAutoScrollInterval(interval);
+    }
+    // Auto scroll down  
+    else if (distanceFromBottom < scrollThreshold && distanceFromBottom > 0) {
+      const interval = setInterval(() => {
+        if (container === document.documentElement) {
+          window.scrollBy(0, scrollSpeed);
+        } else {
+          const maxScroll = container.scrollHeight - container.clientHeight;
+          container.scrollTop = Math.min(maxScroll, container.scrollTop + scrollSpeed);
+        }
+      }, 16); // ~60fps
+      setAutoScrollInterval(interval);
+    }
+  };
+
+  const moveField = (fromIndex: number, toIndex: number) => {
+    const newFields = [...fields];
+    const [movedField] = newFields.splice(fromIndex, 1);
+    newFields.splice(toIndex, 0, movedField);
+    setFields(newFields);
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,9 +302,8 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
       </form>
     );
   }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" data-scroll-container>
       <Card className="p-6">
         <h2 className="text-lg font-semibold mb-4">Form Details</h2>
         <div className="space-y-4">
@@ -228,13 +335,32 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
             <Plus className="h-4 w-4 mr-2" />
             Add Field
           </Button>
-        </div>
-        
-        <div className="space-y-4">
-          {fields.map((field) => (
-            <Card key={field.id} className="p-4">
-              <div className="flex items-start gap-4">
-                <GripVertical className="h-5 w-5 text-gray-400 mt-2" />
+        </div>        <div className="space-y-4">
+          {fields.map((field, index) => (
+            <Card 
+              key={field.id}
+              className={`p-4 transition-all duration-200 ${
+                draggedFieldId === field.id 
+                  ? 'opacity-50 scale-[0.98] shadow-lg border-primary/50' 
+                  : 'opacity-100 scale-100'
+              } ${
+                draggedFieldId && draggedFieldId !== field.id 
+                  ? 'hover:border-primary/30 hover:shadow-md border-dashed border-2' 
+                  : ''
+              }`}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, field.id)}
+            >
+              <div className="flex items-start gap-4">                <div 
+                  className="cursor-grab active:cursor-grabbing mt-2 p-2 rounded-md hover:bg-accent transition-colors select-none"
+                  title="Drag to reorder field"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, field.id)}
+                  onDragEnd={handleDragEnd}
+                  onDrag={handleAutoScroll}
+                >
+                  <GripVertical className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                </div>
                 
                 <div className="flex-1 space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">                    <div>
@@ -300,9 +426,7 @@ Option 3"
                     />
                     <Label htmlFor={`required-${field.id}`}>Required field</Label>
                   </div>
-                </div>
-
-                <Button
+                </div>                <Button
                   type="button"
                   variant="ghost"
                   size="sm"
@@ -312,10 +436,9 @@ Option 3"
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-            </Card>
-          ))}
+            </Card>          ))}
         </div>
-      </Card>      <div className="flex gap-4">
+      </Card><div className="flex gap-4">
         <Button type="submit" disabled={isSubmitting || !formName.trim()}>
           {isSubmitting 
             ? (initialForm ? 'Updating...' : 'Creating...') 
