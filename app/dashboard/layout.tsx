@@ -15,12 +15,11 @@ export default async function DashboardLayout({
 
   if (!user) {
     return redirect("/auth/login");
-  }
-  return (
-    <div className="flex h-screen bg-background">
+  }  return (
+    <div className="flex h-screen bg-background fixed inset-0">
       <DashboardNav />
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full overflow-auto bg-background">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-auto bg-background">
           {children}
         </div>
       </main>

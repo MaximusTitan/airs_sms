@@ -29,11 +29,10 @@ export default async function EditFormPage({ params }: EditFormPageProps) {
 
   if (error || !form) {
     notFound();
-  }
-
-  return (
+  }  return (
     <div className="p-6">
-      <div className="max-w-4xl mx-auto">        <div className="mb-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">
             Edit Form
           </h1>

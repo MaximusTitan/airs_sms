@@ -168,22 +168,22 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
               />
             </div>
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
+        </Card>        <Card className="p-6">
+          {/* Sticky Form Fields Header with Add Field Button */}
+          <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-background py-2 -mx-6 px-6 border-b border-border/50">
             <h2 className="text-lg font-semibold">Form Fields</h2>
-            <Button type="button" variant="outline" size="sm" disabled>
+            <Button type="button" variant="outline" size="sm" disabled className="shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Field
             </Button>
           </div>
+          
           <div className="space-y-4">
             <div className="text-center py-8 text-gray-500">
               Loading form builder...
             </div>
           </div>
-        </Card>        <div className="flex gap-4">
+        </Card><div className="flex gap-4">
           <Button type="submit" disabled>
             {initialForm ? 'Update Form' : 'Create Form'}
           </Button>
@@ -220,16 +220,17 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
             />
           </div>
         </div>
-      </Card>
-
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
+      </Card>      <Card className="p-6">
+        {/* Sticky Form Fields Header with Add Field Button */}
+        <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-background py-2 -mx-6 px-6 border-b border-border/50">
           <h2 className="text-lg font-semibold">Form Fields</h2>
-          <Button type="button" onClick={addField} variant="outline" size="sm">
+          <Button type="button" onClick={addField} variant="outline" size="sm" className="shadow-sm">
             <Plus className="h-4 w-4 mr-2" />
             Add Field
           </Button>
-        </div>        <div className="space-y-4">
+        </div>
+        
+        <div className="space-y-4">
           {fields.map((field) => (
             <Card key={field.id} className="p-4">
               <div className="flex items-start gap-4">
