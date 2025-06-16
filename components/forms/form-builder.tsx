@@ -181,15 +181,7 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
           container.scrollTop = Math.min(maxScroll, container.scrollTop + scrollSpeed);
         }
       }, 16); // ~60fps
-      setAutoScrollInterval(interval);
-    }
-  };
-
-  const moveField = (fromIndex: number, toIndex: number) => {
-    const newFields = [...fields];
-    const [movedField] = newFields.splice(fromIndex, 1);
-    newFields.splice(toIndex, 0, movedField);
-    setFields(newFields);
+      setAutoScrollInterval(interval);    }
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,7 +328,7 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
             Add Field
           </Button>
         </div>        <div className="space-y-4">
-          {fields.map((field, index) => (
+          {fields.map((field) => (
             <Card 
               key={field.id}
               className={`p-4 transition-all duration-200 ${
