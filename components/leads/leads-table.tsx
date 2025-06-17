@@ -6,6 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Lead, LeadStatus, FormField } from "@/lib/types/database";
 import { formatDistanceToNow, format } from "date-fns";
-import { MoreHorizontal, Edit, Trash2, Mail, Check, ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Mail, Check, ChevronDown, ChevronRight, Eye, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +50,10 @@ export function LeadsTable({ leads }: LeadsTableProps) {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
   const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
     setIsUpdating(leadId);
@@ -61,7 +77,6 @@ export function LeadsTable({ leads }: LeadsTableProps) {
       setIsUpdating(null);
     }
   };
-
   const updateBulkStatus = async (newStatus: LeadStatus) => {
     setIsUpdating('bulk');
     try {
@@ -82,6 +97,43 @@ export function LeadsTable({ leads }: LeadsTableProps) {
       console.error('Error updating lead statuses:', error);
     } finally {
       setIsUpdating(null);
+    }
+  };
+
+  const createGroup = async () => {
+    if (!groupName.trim() || selectedLeads.length === 0) return;
+
+    setIsCreatingGroup(true);
+    try {
+      const response = await fetch('/api/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: groupName,
+          description: groupDescription,
+          leadIds: selectedLeads,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create group');
+      }
+
+      // Reset form and close dialog
+      setGroupName("");
+      setGroupDescription("");
+      setSelectedLeads([]);
+      setIsCreateGroupOpen(false);
+      
+      // Optionally show success message or redirect
+      alert('Group created successfully!');
+    } catch (error) {
+      console.error('Error creating group:', error);
+      alert('Failed to create group');
+    } finally {
+      setIsCreatingGroup(false);
     }
   };
 
@@ -410,12 +462,69 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           <div className="flex items-center justify-between">
             <span className="text-sm text-primary font-medium">
               {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''} selected
-            </span>
-            <div className="flex gap-3 items-center">
+            </span>            <div className="flex gap-3 items-center">
               <Button size="sm" variant="outline">
                 <Mail className="h-4 w-4 mr-2" />
                 Send Bulk Email
               </Button>
+              <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Users className="h-4 w-4 mr-2" />
+                    Create Group
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Create New Group</DialogTitle>
+                    <DialogDescription>
+                      Create a new group with the selected {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''}.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name" className="text-right">
+                        Name
+                      </Label>
+                      <Input
+                        id="name"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        className="col-span-3"
+                        placeholder="Enter group name"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="description" className="text-right">
+                        Description
+                      </Label>
+                      <Textarea
+                        id="description"
+                        value={groupDescription}
+                        onChange={(e) => setGroupDescription(e.target.value)}
+                        className="col-span-3"
+                        placeholder="Enter group description (optional)"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsCreateGroupOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="button" 
+                      onClick={createGroup}
+                      disabled={!groupName.trim() || isCreatingGroup}
+                    >
+                      {isCreatingGroup ? 'Creating...' : 'Create Group'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Select onValueChange={(value) => updateBulkStatus(value as LeadStatus)} disabled={isUpdating === 'bulk'}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Update Status" />

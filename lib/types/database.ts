@@ -153,6 +153,52 @@ export interface Database {
           user_id?: string
         }
       }
+      lead_groups: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          name: string
+          description: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          name: string
+          description?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          name?: string
+          description?: string | null
+          user_id?: string
+        }
+      }
+      group_memberships: {
+        Row: {
+          id: string
+          created_at: string
+          group_id: string
+          lead_id: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          group_id: string
+          lead_id: string
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          group_id?: string
+          lead_id?: string
+        }
+      }
     }
   }
 }
@@ -219,4 +265,20 @@ export interface Email {
   lead_ids: string[]
   user_id: string
   resend_id: string | null
+}
+
+export interface LeadGroup {
+  id: string
+  created_at: string
+  updated_at: string
+  name: string
+  description: string | null
+  user_id: string
+}
+
+export interface GroupMembership {
+  id: string
+  created_at: string
+  group_id: string
+  lead_id: string
 }

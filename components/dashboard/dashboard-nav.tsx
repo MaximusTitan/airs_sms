@@ -14,12 +14,14 @@ import {
   Mail, 
   BarChart3,
   Settings,
-  LogOut
+  LogOut,
+  UserCheck
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Leads", href: "/dashboard/leads", icon: Users },
+  { name: "Groups", href: "/dashboard/groups", icon: UserCheck },
   { name: "Forms", href: "/dashboard/forms", icon: FileText },
   { name: "Emails", href: "/dashboard/emails", icon: Mail },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
