@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -260,9 +260,10 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                   <p className="text-sm">Create a form to start collecting leads</p>
                 </div>
               </TableCell>
-            </TableRow>          ) : (
-            processedLeads.flatMap((lead) => {
-              const rows = [
+            </TableRow>
+          ) : (
+            processedLeads.map((lead) => (
+              <>
                 <TableRow key={lead.id} className="hover:bg-accent/30 transition-colors">
                   <TableCell className="px-6 py-4">
                     <Checkbox 
@@ -390,12 +391,10 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu>                  </TableCell>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
-              ];
-
-              if (expandedLeads.includes(lead.id)) {
-                rows.push(
+                {expandedLeads.includes(lead.id) && (
                   <TableRow key={`${lead.id}-expanded`}>
                     <TableCell colSpan={10} className="px-6 py-6 bg-accent/20">
                       <div className="space-y-6">
@@ -483,11 +482,9 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                       </div>
                     </TableCell>
                   </TableRow>
-                );
-              }
-
-              return rows;
-            })
+                )}
+              </>
+            ))
           )}
         </TableBody>
       </Table>

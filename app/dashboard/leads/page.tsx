@@ -11,10 +11,10 @@ export default async function LeadsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) {
     redirect('/auth/login');
   }
+
   // Fetch leads with form information including field definitions
   const { data: leads } = await supabase
     .from('leads')
@@ -27,10 +27,30 @@ export default async function LeadsPage() {
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
+
+  // Fetch group memberships separately to avoid join issues
+  let leadsWithGroups = leads || [];
+  if (leads && leads.length > 0) {    const { data: memberships } = await supabase
+      .from('group_memberships')
+      .select(`
+        lead_id,
+        lead_groups (
+          id,
+          name
+        )
+      `)
+      .in('lead_id', leads.map(lead => lead.id));
+
+    // Attach group information to leads
+    leadsWithGroups = leads.map(lead => ({
+      ...lead,
+      group_memberships: memberships?.filter(m => m.lead_id === lead.id) || []    }));
+  }
+
   return (
     <div className="p-8 space-y-8 bg-background min-h-full">
       <LeadsHeader />
-      <LeadsTable leads={leads || []} />
+      <LeadsTable leads={leadsWithGroups} />
     </div>
   );
 }

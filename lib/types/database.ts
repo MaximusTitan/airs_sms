@@ -229,6 +229,7 @@ export interface Lead {
   tags: string[]
   user_id: string
   form_data: Record<string, string | boolean | number>
+  groups?: { id: string; name: string; color: string }[]
 }
 
 export interface Form {
