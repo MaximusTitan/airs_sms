@@ -4,9 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Mail } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export function GroupsHeader() {
+interface GroupsHeaderProps {
+  selectedGroups?: string[];
+}
+
+export function GroupsHeader({ selectedGroups = [] }: GroupsHeaderProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSendBulkEmail = () => {
+    if (selectedGroups.length > 0) {
+      const groupIds = selectedGroups.join(',');
+      router.push(`/dashboard/emails/compose?groups=${groupIds}`);
+    } else {
+      router.push('/dashboard/emails/compose');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -19,11 +34,19 @@ export function GroupsHeader() {
             Manage your lead groups and send targeted communications
           </p>
         </div>
-        
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex items-center gap-2 border-border hover:bg-accent">
+          <div className="flex gap-3">
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 border-border hover:bg-accent"
+            onClick={handleSendBulkEmail}
+          >
             <Mail className="h-4 w-4" />
             Send Bulk Email
+            {selectedGroups.length > 0 && (
+              <span className="ml-1 text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                {selectedGroups.length}
+              </span>
+            )}
           </Button>
           <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90">
             <Plus className="h-4 w-4" />

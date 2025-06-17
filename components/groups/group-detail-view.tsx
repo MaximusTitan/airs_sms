@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,20 +42,20 @@ import {
 } from "@/components/ui/table";
 import { LeadGroup, Lead, LeadStatus, FormField } from "@/lib/types/database";
 import { formatDistanceToNow, format } from "date-fns";
-import { 
+import {
   ArrowLeft,
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
-  Mail, 
-  Check, 
-  ChevronDown, 
-  ChevronRight, 
-  Eye, 
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Mail,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Eye,
   Users,
   Calendar,
   UserPlus,
-  Filter
+  Filter,
 } from "lucide-react";
 
 interface LeadWithForm extends Lead {
@@ -77,29 +78,33 @@ interface GroupDetailViewProps {
 }
 
 export function GroupDetailView({ group }: GroupDetailViewProps) {
+  const router = useRouter();
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState(group.name);
-  const [groupDescription, setGroupDescription] = useState(group.description || "");
+  const [groupDescription, setGroupDescription] = useState(
+    group.description || ""
+  );
 
   const members = group.group_memberships || [];
-  const filteredMembers = statusFilter === "all" 
-    ? members 
-    : members.filter(member => member.leads.status === statusFilter);
+  const filteredMembers =
+    statusFilter === "all"
+      ? members
+      : members.filter((member) => member.leads.status === statusFilter);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'qualified':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'unqualified':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'trash':
-        return 'bg-red-100 text-red-800 border-red-200';
+      case "qualified":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "unqualified":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "trash":
+        return "bg-red-100 text-red-800 border-red-200";
       default:
-        return 'bg-muted text-muted-foreground border-border';
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
@@ -121,43 +126,56 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
     setIsUpdating(leadId);
     try {
       const response = await fetch(`/api/leads/${leadId}/status`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ status: newStatus }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update status');
+        throw new Error("Failed to update status");
       }
 
       window.location.reload();
     } catch (error) {
-      console.error('Error updating lead status:', error);
+      console.error("Error updating lead status:", error);
     } finally {
       setIsUpdating(null);
     }
   };
 
+  // Handle bulk email for the entire group
+  const handleSendGroupEmail = () => {
+    router.push(`/dashboard/emails/compose?groups=${group.id}`);
+  };
+
+  // Handle bulk email for selected leads in this group
+  const handleSendSelectedEmail = () => {
+    if (selectedLeads.length > 0) {
+      const leadIds = selectedLeads.join(",");
+      router.push(`/dashboard/emails/compose?leads=${leadIds}`);
+    }
+  };
+
   const updateBulkStatus = async (newStatus: LeadStatus) => {
-    setIsUpdating('bulk');
+    setIsUpdating("bulk");
     try {
-      const response = await fetch('/api/leads/bulk-update', {
-        method: 'PATCH',
+      const response = await fetch("/api/leads/bulk-update", {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ leadIds: selectedLeads, status: newStatus }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update statuses');
+        throw new Error("Failed to update statuses");
       }
 
       window.location.reload();
     } catch (error) {
-      console.error('Error updating lead statuses:', error);
+      console.error("Error updating lead statuses:", error);
     } finally {
       setIsUpdating(null);
     }
@@ -166,12 +184,12 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
   const updateGroup = async () => {
     if (!groupName.trim()) return;
 
-    setIsUpdating('group');
+    setIsUpdating("group");
     try {
       const response = await fetch(`/api/groups/${group.id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: groupName,
@@ -180,38 +198,41 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update group');
+        throw new Error("Failed to update group");
       }
 
       setIsEditGroupOpen(false);
       window.location.reload();
     } catch (error) {
-      console.error('Error updating group:', error);
-      alert('Failed to update group');
+      console.error("Error updating group:", error);
+      alert("Failed to update group");
     } finally {
       setIsUpdating(null);
     }
   };
 
   const removeFromGroup = async (membershipId: string) => {
-    if (!confirm('Are you sure you want to remove this lead from the group?')) {
+    if (!confirm("Are you sure you want to remove this lead from the group?")) {
       return;
     }
 
     setIsUpdating(membershipId);
     try {
-      const response = await fetch(`/api/groups/memberships/${membershipId}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/groups/memberships/${membershipId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to remove from group');
+        throw new Error("Failed to remove from group");
       }
 
       window.location.reload();
     } catch (error) {
-      console.error('Error removing from group:', error);
-      alert('Failed to remove from group');
+      console.error("Error removing from group:", error);
+      alert("Failed to remove from group");
     } finally {
       setIsUpdating(null);
     }
@@ -221,48 +242,63 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
     if (checked) {
       setSelectedLeads([...selectedLeads, leadId]);
     } else {
-      setSelectedLeads(selectedLeads.filter(id => id !== leadId));
+      setSelectedLeads(selectedLeads.filter((id) => id !== leadId));
     }
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedLeads(filteredMembers.map(member => member.leads.id));
+      setSelectedLeads(filteredMembers.map((member) => member.leads.id));
     } else {
       setSelectedLeads([]);
     }
   };
 
   const toggleExpandLead = (leadId: string) => {
-    setExpandedLeads(prev => 
-      prev.includes(leadId) 
-        ? prev.filter(id => id !== leadId)
+    setExpandedLeads((prev) =>
+      prev.includes(leadId)
+        ? prev.filter((id) => id !== leadId)
         : [...prev, leadId]
     );
   };
 
-  const renderFormData = (formData: Record<string, string | boolean | number>, formFields?: FormField[]) => {
+  const renderFormData = (
+    formData: Record<string, string | boolean | number>,
+    formFields?: FormField[]
+  ) => {
     if (!formData || Object.keys(formData).length === 0) {
-      return <span className="text-muted-foreground text-sm">No additional data</span>;
+      return (
+        <span className="text-muted-foreground text-sm">
+          No additional data
+        </span>
+      );
     }
 
-    const fieldLabelMap = formFields?.reduce((acc, field) => {
-      acc[field.id] = field.label;
-      return acc;
-    }, {} as Record<string, string>) || {};
+    const fieldLabelMap =
+      formFields?.reduce((acc, field) => {
+        acc[field.id] = field.label;
+        return acc;
+      }, {} as Record<string, string>) || {};
 
     return (
       <div className="space-y-2">
         {Object.entries(formData).map(([key, value]) => {
-          const displayLabel = fieldLabelMap[key] || key.replace(/[_-]/g, ' ');
-          
+          const displayLabel = fieldLabelMap[key] || key.replace(/[_-]/g, " ");
+
           return (
-            <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1">
+            <div
+              key={key}
+              className="flex flex-col sm:flex-row sm:items-center gap-1"
+            >
               <span className="text-sm font-medium text-foreground min-w-0 capitalize">
                 {displayLabel}:
               </span>
               <span className="text-sm text-muted-foreground break-words">
-                {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
+                {typeof value === "boolean"
+                  ? value
+                    ? "Yes"
+                    : "No"
+                  : String(value)}
               </span>
             </div>
           );
@@ -295,7 +331,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
             )}
           </div>
         </div>
-        
+
         <div className="flex gap-3">
           <Dialog open={isEditGroupOpen} onOpenChange={setIsEditGroupOpen}>
             <DialogTrigger asChild>
@@ -336,25 +372,25 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                 </div>
               </div>
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setIsEditGroupOpen(false)}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={updateGroup}
-                  disabled={!groupName.trim() || isUpdating === 'group'}
+                  disabled={!groupName.trim() || isUpdating === "group"}
                 >
-                  {isUpdating === 'group' ? 'Updating...' : 'Update Group'}
+                  {isUpdating === "group" ? "Updating..." : "Update Group"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          
-          <Button>
+
+          <Button onClick={handleSendGroupEmail}>
             <Mail className="h-4 w-4 mr-2" />
             Send Email to All
           </Button>
@@ -413,7 +449,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">
-                {format(new Date(group.created_at), 'MMM d, yyyy')}
+                {format(new Date(group.created_at), "MMM d, yyyy")}
               </span>
             </div>
           </CardContent>
@@ -454,18 +490,33 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
           <TableHeader className="bg-accent/50">
             <TableRow>
               <TableHead className="px-6 py-4 w-12">
-                <Checkbox 
-                  checked={selectedLeads.length === filteredMembers.length && filteredMembers.length > 0}
+                <Checkbox
+                  checked={
+                    selectedLeads.length === filteredMembers.length &&
+                    filteredMembers.length > 0
+                  }
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
               <TableHead className="px-6 py-4 w-12"></TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Name</TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Email</TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Phone</TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Status</TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Added</TableHead>
-              <TableHead className="px-6 py-4 text-right text-xs font-semibold text-foreground uppercase tracking-wider">Actions</TableHead>
+              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
+                Name
+              </TableHead>
+              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
+                Email
+              </TableHead>
+              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
+                Phone
+              </TableHead>
+              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
+                Status
+              </TableHead>
+              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
+                Added
+              </TableHead>
+              <TableHead className="px-6 py-4 text-right text-xs font-semibold text-foreground uppercase tracking-wider">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -475,21 +526,25 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                   <div className="text-muted-foreground">
                     <p className="text-lg font-medium">No members found</p>
                     <p className="text-sm">
-                      {statusFilter === "all" 
-                        ? "This group doesn't have any members yet" 
-                        : `No members with status "${statusFilter}"`
-                      }
+                      {statusFilter === "all"
+                        ? "This group doesn't have any members yet"
+                        : `No members with status "${statusFilter}"`}
                     </p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
               filteredMembers.flatMap((member) => [
-                <TableRow key={member.id} className="hover:bg-accent/30 transition-colors">
+                <TableRow
+                  key={member.id}
+                  className="hover:bg-accent/30 transition-colors"
+                >
                   <TableCell className="px-6 py-4">
-                    <Checkbox 
+                    <Checkbox
                       checked={selectedLeads.includes(member.leads.id)}
-                      onCheckedChange={(checked) => handleSelectLead(member.leads.id, checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        handleSelectLead(member.leads.id, checked as boolean)
+                      }
                     />
                   </TableCell>
                   <TableCell className="px-6 py-4">
@@ -518,13 +573,15 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <div className="text-sm text-muted-foreground">
-                      {member.leads.phone || 'N/A'}
+                      {member.leads.phone || "N/A"}
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <Select
                       value={member.leads.status}
-                      onValueChange={(value) => updateLeadStatus(member.leads.id, value as LeadStatus)}
+                      onValueChange={(value) =>
+                        updateLeadStatus(member.leads.id, value as LeadStatus)
+                      }
                       disabled={isUpdating === member.leads.id}
                     >
                       <SelectTrigger className="w-32">
@@ -536,17 +593,17 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unqualified">
-                          <Badge className={getStatusColor('unqualified')}>
+                          <Badge className={getStatusColor("unqualified")}>
                             unqualified
                           </Badge>
                         </SelectItem>
                         <SelectItem value="qualified">
-                          <Badge className={getStatusColor('qualified')}>
+                          <Badge className={getStatusColor("qualified")}>
                             qualified
                           </Badge>
                         </SelectItem>
                         <SelectItem value="trash">
-                          <Badge className={getStatusColor('trash')}>
+                          <Badge className={getStatusColor("trash")}>
                             trash
                           </Badge>
                         </SelectItem>
@@ -555,7 +612,9 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <div className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(member.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(member.created_at), {
+                        addSuffix: true,
+                      })}
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4 text-right">
@@ -574,14 +633,23 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                           <Mail className="mr-2 h-4 w-4" />
                           Send Email
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => updateLeadStatus(member.leads.id, member.leads.status === 'qualified' ? 'unqualified' : 'qualified')}
+                        <DropdownMenuItem
+                          onClick={() =>
+                            updateLeadStatus(
+                              member.leads.id,
+                              member.leads.status === "qualified"
+                                ? "unqualified"
+                                : "qualified"
+                            )
+                          }
                           disabled={isUpdating === member.leads.id}
                         >
                           <Check className="mr-2 h-4 w-4" />
-                          {member.leads.status === 'qualified' ? 'Mark Unqualified' : 'Mark Qualified'}
+                          {member.leads.status === "qualified"
+                            ? "Mark Unqualified"
+                            : "Mark Qualified"}
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-destructive hover:bg-destructive/10"
                           onClick={() => removeFromGroup(member.id)}
                           disabled={isUpdating === member.id}
@@ -593,94 +661,133 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>,
-                ...(expandedLeads.includes(member.leads.id) ? [
-                  <TableRow key={`${member.leads.id}-expanded`}>
-                    <TableCell colSpan={8} className="px-6 py-6 bg-accent/20">
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Lead Information */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Lead Information</h4>
-                            <div className="space-y-3">
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Full Name:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{member.leads.name}</span>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Email:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{member.leads.email}</span>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Phone:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{member.leads.phone || 'Not provided'}</span>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Source:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{member.leads.forms?.name || member.leads.source || 'Direct'}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Timestamps */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Timeline</h4>
-                            <div className="space-y-3">
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Lead Created:</span>
-                                <div className="text-sm text-muted-foreground ml-2">
-                                  {format(new Date(member.leads.created_at), 'PPpp')}
+                ...(expandedLeads.includes(member.leads.id)
+                  ? [
+                      <TableRow key={`${member.leads.id}-expanded`}>
+                        <TableCell colSpan={8} className="px-6 py-6 bg-accent/20">
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {/* Lead Information */}
+                              <div className="space-y-4">
+                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                                  Lead Information
+                                </h4>
+                                <div className="space-y-3">
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      Full Name:
+                                    </span>
+                                    <span className="text-sm text-muted-foreground ml-2">
+                                      {member.leads.name}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      Email:
+                                    </span>
+                                    <span className="text-sm text-muted-foreground ml-2">
+                                      {member.leads.email}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      Phone:
+                                    </span>
+                                    <span className="text-sm text-muted-foreground ml-2">
+                                      {member.leads.phone || "Not provided"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      Source:
+                                    </span>
+                                    <span className="text-sm text-muted-foreground ml-2">
+                                      {member.leads.forms?.name ||
+                                        member.leads.source ||
+                                        "Direct"}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Added to Group:</span>
-                                <div className="text-sm text-muted-foreground ml-2">
-                                  {format(new Date(member.created_at), 'PPpp')}
+
+                              {/* Timestamps */}
+                              <div className="space-y-4">
+                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                                  Timeline
+                                </h4>
+                                <div className="space-y-3">
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      Lead Created:
+                                    </span>
+                                    <div className="text-sm text-muted-foreground ml-2">
+                                      {format(new Date(member.leads.created_at), "PPpp")}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      Added to Group:
+                                    </span>
+                                    <div className="text-sm text-muted-foreground ml-2">
+                                      {format(new Date(member.created_at), "PPpp")}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* Tags */}
-                        {member.leads.tags && member.leads.tags.length > 0 && (
-                          <div className="space-y-3">
-                            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Tags</h4>
-                            <div className="flex flex-wrap gap-1">
-                              {member.leads.tags.map((tag, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
+                            {/* Tags */}
+                            {member.leads.tags && member.leads.tags.length > 0 && (
+                              <div className="space-y-3">
+                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                                  Tags
+                                </h4>
+                                <div className="flex flex-wrap gap-1">
+                                  {member.leads.tags.map((tag, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Notes */}
+                            {member.leads.notes && (
+                              <div className="space-y-3">
+                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                                  Notes
+                                </h4>
+                                <div className="p-3 bg-background rounded-md border">
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                    {member.leads.notes}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Form Data */}
+                            <div className="space-y-3">
+                              <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                                Form Submission Data
+                              </h4>
+                              <div className="p-3 bg-background rounded-md border">
+                                {renderFormData(
+                                  member.leads.form_data,
+                                  member.leads.forms?.fields
+                                )}
+                              </div>
                             </div>
                           </div>
-                        )}
-
-                        {/* Notes */}
-                        {member.leads.notes && (
-                          <div className="space-y-3">
-                            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Notes</h4>
-                            <div className="p-3 bg-background rounded-md border">
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{member.leads.notes}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Form Data */}
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Form Submission Data</h4>
-                          <div className="p-3 bg-background rounded-md border">
-                            {renderFormData(member.leads.form_data, member.leads.forms?.fields)}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ] : [])
+                        </TableCell>
+                      </TableRow>
+                    ]
+                  : [])
               ])
             )}
           </TableBody>
         </Table>
-        
+
         {selectedLeads.length > 0 && (
           <div className="px-6 py-4 bg-primary/10 border-t">
             <div className="flex items-center justify-between">
@@ -688,7 +795,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                 {selectedLeads.length} member{selectedLeads.length !== 1 ? 's' : ''} selected
               </span>
               <div className="flex gap-3 items-center">
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={handleSendSelectedEmail}>
                   <Mail className="h-4 w-4 mr-2" />
                   Send Bulk Email
                 </Button>

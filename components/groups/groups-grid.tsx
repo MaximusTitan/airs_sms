@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,11 +34,31 @@ interface GroupWithMembers extends LeadGroup {
 
 interface GroupsGridProps {
   groups: GroupWithMembers[];
+  selectedGroups?: string[];
+  onSelectedGroupsChange?: (groups: string[]) => void;
 }
 
-export function GroupsGrid({ groups }: GroupsGridProps) {
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+export function GroupsGrid({ groups, selectedGroups: externalSelectedGroups, onSelectedGroupsChange }: GroupsGridProps) {
+  const router = useRouter();
+  const [internalSelectedGroups, setInternalSelectedGroups] = useState<string[]>([]);
+  
+  // Use external selectedGroups if provided, otherwise use internal state
+  const selectedGroups = externalSelectedGroups ?? internalSelectedGroups;
+  const setSelectedGroups = onSelectedGroupsChange ?? setInternalSelectedGroups;
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  // Handle bulk email for selected groups
+  const handleSendBulkEmail = () => {
+    if (selectedGroups.length > 0) {
+      const groupIds = selectedGroups.join(',');
+      router.push(`/dashboard/emails/compose?groups=${groupIds}`);
+    }
+  };
+
+  // Handle individual group email
+  const sendBulkEmail = async (groupId: string) => {
+    router.push(`/dashboard/emails/compose?groups=${groupId}`);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -79,18 +100,6 @@ export function GroupsGrid({ groups }: GroupsGridProps) {
       setSelectedGroups(groups.map(group => group.id));
     } else {
       setSelectedGroups([]);
-    }
-  };
-
-  const sendBulkEmail = async (groupId: string) => {
-    setIsUpdating(groupId);
-    try {
-      // TODO: Implement bulk email functionality
-      alert('Bulk email functionality will be implemented');
-    } catch (error) {
-      console.error('Error sending bulk email:', error);
-    } finally {
-      setIsUpdating(null);
     }
   };
 
@@ -178,10 +187,6 @@ export function GroupsGrid({ groups }: GroupsGridProps) {
                 </span>
               </div>
               <div className="flex gap-3">
-                <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Bulk Email
-                </Button>
                 <Button 
                   size="sm" 
                   variant="destructive"
@@ -190,6 +195,10 @@ export function GroupsGrid({ groups }: GroupsGridProps) {
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   {isUpdating === 'bulk' ? 'Deleting...' : 'Delete Selected'}
+                </Button>
+                <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10" onClick={handleSendBulkEmail}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Bulk Email
                 </Button>
               </div>
             </div>

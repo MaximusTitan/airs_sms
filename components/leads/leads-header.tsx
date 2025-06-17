@@ -4,9 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Mail } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export function LeadsHeader() {
+interface LeadsHeaderProps {
+  selectedLeads?: string[];
+}
+
+export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSendEmail = () => {
+    if (selectedLeads.length > 0) {
+      const leadIds = selectedLeads.join(',');
+      router.push(`/dashboard/emails/compose?leads=${leadIds}`);
+    } else {
+      router.push('/dashboard/emails/compose');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -19,11 +34,19 @@ export function LeadsHeader() {
             Manage and track your leads
           </p>
         </div>
-        
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex items-center gap-2 border-border hover:bg-accent">
+          <div className="flex gap-3">
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 border-border hover:bg-accent"
+            onClick={handleSendEmail}
+          >
             <Mail className="h-4 w-4" />
             Send Email
+            {selectedLeads.length > 0 && (
+              <span className="ml-1 text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                {selectedLeads.length}
+              </span>
+            )}
           </Button>
           <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90">
             <Plus className="h-4 w-4" />

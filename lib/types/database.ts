@@ -204,7 +204,7 @@ export interface Database {
 }
 
 export type LeadStatus = 'qualified' | 'unqualified' | 'trash'
-export type EmailStatus = 'draft' | 'sending' | 'sent' | 'failed'
+export type EmailStatus = 'draft' | 'sending' | 'sent' | 'failed' | 'partially_sent'
 
 export interface FormField {
   id: string

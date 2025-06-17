@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { LeadsTable } from "@/components/leads/leads-table";
-import { LeadsHeader } from "@/components/leads/leads-header";
+import { LeadsPageContent } from "@/components/leads/leads-page-content";
 import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
@@ -46,11 +45,9 @@ export default async function LeadsPage() {
       ...lead,
       group_memberships: memberships?.filter(m => m.lead_id === lead.id) || []    }));
   }
-
   return (
     <div className="p-8 space-y-8 bg-background min-h-full">
-      <LeadsHeader />
-      <LeadsTable leads={leadsWithGroups} />
+      <LeadsPageContent leads={leadsWithGroups} />
     </div>
   );
 }

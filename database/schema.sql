@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS emails (
     content TEXT NOT NULL,
     template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
     sent_at TIMESTAMP WITH TIME ZONE,
-    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sending', 'sent', 'failed')),
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sending', 'sent', 'failed', 'partially_sent')),
     recipient_emails TEXT[] NOT NULL DEFAULT '{}',
     lead_ids UUID[] DEFAULT '{}',
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,10 +48,17 @@ interface LeadsTableProps {
     forms?: { name: string; fields: FormField[] };
     group_memberships?: { lead_groups: { id: string; name: string } }[];
   })[];
+  selectedLeads?: string[];
+  onSelectedLeadsChange?: (leads: string[]) => void;
 }
 
-export function LeadsTable({ leads }: LeadsTableProps) {
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSelectedLeadsChange }: LeadsTableProps) {
+  const router = useRouter();
+  const [internalSelectedLeads, setInternalSelectedLeads] = useState<string[]>([]);
+  
+  // Use external selectedLeads if provided, otherwise use internal state
+  const selectedLeads = externalSelectedLeads ?? internalSelectedLeads;
+  const setSelectedLeads = onSelectedLeadsChange ?? setInternalSelectedLeads;
 
   // Process leads to transform group_memberships into groups array
   const processedLeads = leads.map(lead => ({
@@ -227,6 +235,13 @@ export function LeadsTable({ leads }: LeadsTableProps) {
         ))}
       </div>
     );
+  };
+
+  const handleSendBulkEmail = () => {
+    if (selectedLeads.length > 0) {
+      const leadIds = selectedLeads.join(',');
+      router.push(`/dashboard/emails/compose?leads=${leadIds}`);
+    }
   };
 
   return (
@@ -498,7 +513,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
               {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''} selected
             </span>
             <div className="flex gap-3 items-center">
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={handleSendBulkEmail}>
                 <Mail className="h-4 w-4 mr-2" />
                 Send Bulk Email
               </Button>
