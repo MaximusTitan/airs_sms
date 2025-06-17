@@ -11,13 +11,12 @@ export default async function EmailsPage() {
 
   if (!user) {
     return null;
-  }
-  // Fetch emails with lead information for recipients
+  }  // Fetch emails with lead information for recipients
   const { data: emails } = await supabase
     .from('emails')
     .select('*')
     .eq('user_id', user.id)
-    .order('sent_at', { ascending: false });
+    .order('created_at', { ascending: false });
 
   // For each email, fetch the lead details if lead_ids exist
   let emailsWithLeads = emails || [];

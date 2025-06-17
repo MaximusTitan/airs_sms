@@ -146,6 +146,19 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
             </div>
           </div>
         </Card>
+          <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <XCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Failed</p>
+              <p className="text-lg font-semibold">
+                {emails.filter(e => e.status === 'failed').length}
+              </p>
+            </div>
+          </div>
+        </Card>
         
         <Card className="p-4">
           <div className="flex items-center gap-3">
@@ -161,7 +174,7 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
       </div>      {/* Emails List */}
       <Card>
         <div className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Email History</h2>
+          <h2 className="text-lg font-semibold mb-4">Email History (All Attempts)</h2>
           {emails.length === 0 ? (
             <div className="text-center py-12">
               <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -173,19 +186,35 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {emails.map((email) => {
+            <div className="space-y-3">              {emails.map((email) => {
                 const isExpanded = expandedEmails.includes(email.id);
                 const recipients = email.recipients || [];
                 const recipientEmails = email.recipient_emails || [];
                 
-                return (                  <div
+                // Add border color based on status
+                const getBorderClass = (status: string) => {
+                  switch (status) {
+                    case 'sent':
+                      return 'border-green-200 hover:border-green-300';
+                    case 'failed':
+                      return 'border-red-200 hover:border-red-300';
+                    case 'partially_sent':
+                      return 'border-orange-200 hover:border-orange-300';
+                    case 'draft':
+                      return 'border-yellow-200 hover:border-yellow-300';
+                    default:
+                      return 'border-gray-200 hover:border-gray-300';
+                  }
+                };
+                
+                return (
+                  <div
                     key={email.id}
-                    className="border rounded-lg hover:shadow-sm transition-shadow"
+                    className={`border rounded-lg hover:shadow-sm transition-shadow ${getBorderClass(email.status)}`}
                   >
                     {/* Email Header - Make it clickable */}
-                    <Dialog>
-                      <DialogTrigger asChild>                        <div 
+                    <Dialog>                      <DialogTrigger asChild>
+                        <div 
                           className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 transition-colors"
                         >
                           <div className="flex items-center gap-4 flex-1">
@@ -202,20 +231,19 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
                                   {email.status}
                                 </Badge>
                               </div>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">                                <span className="flex items-center gap-1">
+                              
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
                                   <Users className="h-3 w-3" />
                                   To: {recipientEmails.length} recipient{recipientEmails.length !== 1 ? 's' : ''} (BCC)
-                                </span>
-                                <span className="text-xs">
+                                </span>                                <span className="text-xs">
                                   From: {fromEmail}
                                 </span>
-                                {email.sent_at && (
-                                  <span>
-                                    Sent {formatDistanceToNow(new Date(email.sent_at), { addSuffix: true })}
-                                  </span>
-                                )}
                                 <span>
-                                  Created {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
+                                  {email.sent_at 
+                                    ? `Sent ${formatDistanceToNow(new Date(email.sent_at), { addSuffix: true })}`
+                                    : `Created ${formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}`
+                                  }
                                 </span>
                               </div>
                             </div>
@@ -238,7 +266,8 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
                                 )}
                               </Button>
                             )}
-                          </div>                        </div>
+                          </div>
+                        </div>
                       </DialogTrigger>
                       
                       <DialogContent className="max-w-2xl">
@@ -251,17 +280,18 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
                             </div>                            <div>
                               <span className="font-medium">To:</span>
                               <span className="ml-2">{recipientEmails.length} recipient{recipientEmails.length !== 1 ? 's' : ''} (BCC)</span>
-                            </div>
-                            <div>
+                            </div>                            <div>
                               <span className="font-medium">Status:</span>
                               <span className="ml-2 capitalize">{email.status}</span>
                             </div>
-                            {email.sent_at && (
-                              <div>
-                                <span className="font-medium">Sent:</span>
-                                <span className="ml-2">{format(new Date(email.sent_at), 'PPpp')}</span>
-                              </div>
-                            )}
+                            <div>
+                              <span className="font-medium">
+                                {email.sent_at ? 'Sent:' : 'Created:'}
+                              </span>
+                              <span className="ml-2">
+                                {format(new Date(email.sent_at || email.created_at), 'PPpp')}
+                              </span>
+                            </div>
                           </div>
                           
                           <div>
