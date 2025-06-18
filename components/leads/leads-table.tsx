@@ -7,18 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
   Table,
   TableBody,
   TableCell,
@@ -26,9 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Lead, LeadStatus, FormField } from "@/lib/types/database";
-import { formatDistanceToNow, format } from "date-fns";
-import { ChevronDown, ChevronRight, Mail, Users } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -36,6 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Lead, LeadStatus, FormField } from "@/lib/types/database";
+import { formatDistanceToNow, format } from "date-fns";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface LeadsTableProps {
   leads: (Lead & { 
@@ -58,13 +46,8 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
   const processedLeads = leads.map(lead => ({
     ...lead,
     groups: lead.group_memberships?.map(membership => membership.lead_groups) || []
-  }));
-  const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
+  }));  const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
-  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
-  const [groupName, setGroupName] = useState("");
-  const [groupDescription, setGroupDescription] = useState("");
-  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
   const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
     setIsUpdating(leadId);
@@ -106,45 +89,7 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
       window.location.reload();
     } catch (error) {
       console.error('Error updating lead statuses:', error);
-    } finally {
-      setIsUpdating(null);
-    }
-  };
-
-  const createGroup = async () => {
-    if (!groupName.trim() || selectedLeads.length === 0) return;
-
-    setIsCreatingGroup(true);
-    try {
-      const response = await fetch('/api/groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: groupName,
-          description: groupDescription,
-          leadIds: selectedLeads,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create group');
-      }
-
-      // Reset form and close dialog
-      setGroupName("");
-      setGroupDescription("");
-      setSelectedLeads([]);
-      setIsCreateGroupOpen(false);
-      
-      // Optionally show success message or redirect
-      alert('Group created successfully!');
-    } catch (error) {
-      console.error('Error creating group:', error);
-      alert('Failed to create group');
-    } finally {
-      setIsCreatingGroup(false);
+    } finally {      setIsUpdating(null);
     }
   };
 
@@ -229,17 +174,10 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
         ))}
       </div>
     );
-  };
-
-  const handleSendBulkEmail = () => {
-    if (selectedLeads.length > 0) {
-      const leadIds = selectedLeads.join(',');
-      router.push(`/dashboard/emails/compose?leads=${leadIds}`);
-    }
-  };
-  return (
+  };  return (
     <Card className="overflow-hidden shadow-sm border border-border/40">
-      <Table>        <TableHeader className="bg-accent/50 border-b border-border/40">
+      <Table>
+        <TableHeader className="bg-accent/50 border-b border-border/40">
           <TableRow className="border-b border-border/40 hover:bg-transparent">
             <TableHead className="px-3 py-3 w-10">
               <Checkbox 
@@ -257,16 +195,19 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
           </TableRow>
         </TableHeader>
         <TableBody>
-          {processedLeads.length === 0 ? (            <TableRow>
+          {processedLeads.length === 0 ? (
+            <TableRow>
               <TableCell colSpan={8} className="px-6 py-16 text-center">
                 <div className="text-muted-foreground">
                   <p className="text-lg font-medium mb-2">No leads found</p>
                   <p className="text-sm">Create a form to start collecting leads</p>
                 </div>
               </TableCell>
-            </TableRow>) : (
+            </TableRow>
+          ) : (
             processedLeads.flatMap((lead) => {
-              const rows = [                <TableRow 
+              const rows = [
+                <TableRow
                   key={lead.id} 
                   className="hover:bg-accent/30 transition-colors border-b border-border/40 cursor-pointer"
                   onClick={() => toggleExpandLead(lead.id)}
@@ -470,112 +411,11 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                     </TableCell>
                   </TableRow>
                 );
-              }
-
-              return rows;
+              }              return rows;
             })
           )}
         </TableBody>
-      </Table>      {selectedLeads.length > 0 && (
-        <div className="px-4 py-3 bg-primary/5 border-t border-border/40">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-primary font-medium">
-              {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''} selected
-            </span>
-            <div className="flex gap-2 items-center">
-              <Button size="sm" variant="outline" onClick={handleSendBulkEmail} className="h-8">
-                <Mail className="h-3 w-3 mr-2" />
-                Send Bulk Email
-              </Button>
-              <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="h-8">
-                    <Users className="h-3 w-3 mr-2" />
-                    Create Group
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Create New Group</DialogTitle>
-                    <DialogDescription>
-                      Create a new group with the selected {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''}.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="name" className="text-right">
-                        Name
-                      </Label>
-                      <Input
-                        id="name"
-                        value={groupName}
-                        onChange={(e) => setGroupName(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Enter group name"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="description" className="text-right">
-                        Description
-                      </Label>
-                      <Textarea
-                        id="description"
-                        value={groupDescription}
-                        onChange={(e) => setGroupDescription(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Enter group description (optional)"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setIsCreateGroupOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="button" 
-                      onClick={createGroup}
-                      disabled={!groupName.trim() || isCreatingGroup}
-                    >
-                      {isCreatingGroup ? 'Creating...' : 'Create Group'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>              <Select onValueChange={(value) => updateBulkStatus(value as LeadStatus)} disabled={isUpdating === 'bulk'}>
-                <SelectTrigger className="w-36 h-8 text-xs">
-                  <SelectValue placeholder="Update Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unqualified">
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${getStatusColor('unqualified')}`}>
-                        unqualified
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="qualified">
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${getStatusColor('qualified')}`}>
-                        qualified
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="trash">
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${getStatusColor('trash')}`}>
-                        trash
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      )}
+      </Table>
     </Card>
   );
 }
