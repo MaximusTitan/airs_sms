@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -35,7 +33,6 @@ interface LeadsTableProps {
 }
 
 export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSelectedLeadsChange }: LeadsTableProps) {
-  const router = useRouter();
   const [internalSelectedLeads, setInternalSelectedLeads] = useState<string[]>([]);
   
   // Use external selectedLeads if provided, otherwise use internal state
@@ -67,28 +64,6 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
       window.location.reload();
     } catch (error) {
       console.error('Error updating lead status:', error);
-    } finally {
-      setIsUpdating(null);
-    }
-  };
-  const updateBulkStatus = async (newStatus: LeadStatus) => {
-    setIsUpdating('bulk');
-    try {
-      const response = await fetch('/api/leads/bulk-update', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ leadIds: selectedLeads, status: newStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update statuses');
-      }
-
-      window.location.reload();
-    } catch (error) {
-      console.error('Error updating lead statuses:', error);
     } finally {      setIsUpdating(null);
     }
   };

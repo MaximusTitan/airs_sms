@@ -13,7 +13,6 @@ import {
   FileText, 
   Mail, 
   BarChart3,
-  Settings,
   LogOut,
   UserCheck,
   Menu,
