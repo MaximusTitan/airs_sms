@@ -81,19 +81,34 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
   const router = useRouter();
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
-  const [isUpdating, setIsUpdating] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
+  const [isAddMembersOpen, setIsAddMembersOpen] = useState(false);
+  const [availableLeads, setAvailableLeads] = useState<LeadWithForm[]>([]);  const [selectedNewLeads, setSelectedNewLeads] = useState<string[]>([]);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  const [isAddingMembers, setIsAddingMembers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [groupName, setGroupName] = useState(group.name);
   const [groupDescription, setGroupDescription] = useState(
     group.description || ""
   );
-
   const members = group.group_memberships || [];
   const filteredMembers =
     statusFilter === "all"
       ? members
       : members.filter((member) => member.leads.status === statusFilter);
+
+  // Filter available leads based on search query
+  const filteredAvailableLeads = availableLeads.filter((lead) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.name.toLowerCase().includes(query) ||
+      lead.email.toLowerCase().includes(query) ||
+      (lead.phone && lead.phone.toLowerCase().includes(query))
+    );
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -233,6 +248,124 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
     } catch (error) {
       console.error("Error removing from group:", error);
       alert("Failed to remove from group");
+    } finally {
+      setIsUpdating(null);
+    }  };
+
+  const fetchAvailableLeads = async () => {
+    setIsLoadingLeads(true);
+    try {
+      const response = await fetch('/api/leads');
+      if (!response.ok) {
+        throw new Error('Failed to fetch leads');
+      }
+      const leads = await response.json();
+      
+      // Filter out leads that are already members of this group
+      const currentMemberIds = members.map(member => member.leads.id);
+      const available = leads.filter((lead: LeadWithForm) => !currentMemberIds.includes(lead.id));
+      
+      setAvailableLeads(available);
+    } catch (error) {
+      console.error('Error fetching available leads:', error);
+      alert('Failed to fetch available leads');
+    } finally {
+      setIsLoadingLeads(false);
+    }
+  };
+
+  const addMembersToGroup = async () => {
+    if (selectedNewLeads.length === 0) return;
+
+    setIsAddingMembers(true);
+    try {
+      const response = await fetch(`/api/groups/${group.id}/memberships`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ leadIds: selectedNewLeads }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add members');
+      }
+
+      const result = await response.json();
+      alert(`Successfully added ${result.addedCount} members to the group`);
+        // Reset and close dialog
+      setSelectedNewLeads([]);
+      setSearchQuery("");
+      setIsAddMembersOpen(false);
+      window.location.reload();
+    } catch (error) {
+      console.error('Error adding members:', error);
+      alert('Failed to add members');
+    } finally {
+      setIsAddingMembers(false);
+    }
+  };
+
+  const handleOpenAddMembers = () => {
+    setIsAddMembersOpen(true);
+    fetchAvailableLeads();
+  };
+
+  const handleSelectNewLead = (leadId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedNewLeads([...selectedNewLeads, leadId]);
+    } else {
+      setSelectedNewLeads(selectedNewLeads.filter(id => id !== leadId));
+    }
+  };
+  const handleSelectAllNewLeads = (checked: boolean) => {
+    if (checked) {
+      // Add all filtered leads to selection, keeping existing selections from other searches
+      const newSelections = filteredAvailableLeads.map(lead => lead.id);
+      const uniqueSelections = [...new Set([...selectedNewLeads, ...newSelections])];
+      setSelectedNewLeads(uniqueSelections);
+    } else {
+      // Remove all filtered leads from selection
+      const filteredIds = filteredAvailableLeads.map(lead => lead.id);
+      setSelectedNewLeads(selectedNewLeads.filter(id => !filteredIds.includes(id)));
+    }  };
+
+  const bulkRemoveFromGroup = async () => {
+    if (selectedLeads.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to remove ${selectedLeads.length} member${selectedLeads.length !== 1 ? 's' : ''} from this group?`)) {
+      return;
+    }
+
+    setIsUpdating('bulk-remove');
+    try {
+      // Get the membership IDs for the selected leads
+      const membershipIds = members
+        .filter(member => selectedLeads.includes(member.leads.id))
+        .map(member => member.id);
+
+      // Remove each membership
+      const removePromises = membershipIds.map(membershipId =>
+        fetch(`/api/groups/memberships/${membershipId}`, {
+          method: 'DELETE',
+        })
+      );
+
+      const responses = await Promise.all(removePromises);
+      
+      // Check if all removals were successful
+      const failedRemovals = responses.filter(response => !response.ok);
+      
+      if (failedRemovals.length > 0) {
+        throw new Error(`Failed to remove ${failedRemovals.length} member${failedRemovals.length !== 1 ? 's' : ''}`);
+      }
+
+      alert(`Successfully removed ${selectedLeads.length} member${selectedLeads.length !== 1 ? 's' : ''} from the group`);
+      setSelectedLeads([]);
+      window.location.reload();
+    } catch (error) {
+      console.error('Error removing members from group:', error);
+      alert('Failed to remove some members from the group');
     } finally {
       setIsUpdating(null);
     }
@@ -387,6 +520,122 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                   {isUpdating === "group" ? "Updating..." : "Update Group"}
                 </Button>
               </DialogFooter>
+            </DialogContent>          </Dialog>
+
+          <Dialog open={isAddMembersOpen} onOpenChange={setIsAddMembersOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Add Members to Group</DialogTitle>                <DialogDescription>
+                  Select leads to add to &quot;{group.name}&quot;. Only leads not already in this group are shown.
+                </DialogDescription>
+              </DialogHeader>              <div className="py-4">
+                {isLoadingLeads ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading available leads...</p>
+                  </div>
+                ) : availableLeads.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No available leads to add to this group.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Search Input */}
+                    <div className="space-y-2">
+                      <Label htmlFor="search-leads">Search Leads</Label>
+                      <Input
+                        id="search-leads"
+                        type="text"
+                        placeholder="Search by name, email, or phone..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="select-all-new"
+                          checked={
+                            filteredAvailableLeads.length > 0 && 
+                            filteredAvailableLeads.every(lead => selectedNewLeads.includes(lead.id))
+                          }
+                          onCheckedChange={handleSelectAllNewLeads}
+                        />
+                        <Label htmlFor="select-all-new" className="text-sm font-medium">
+                          Select all visible ({filteredAvailableLeads.length} leads)
+                        </Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery ? `${filteredAvailableLeads.length} of ${availableLeads.length} leads shown` : `${availableLeads.length} leads available`}
+                      </p>
+                    </div>
+                    
+                    {filteredAvailableLeads.length === 0 && searchQuery ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">No leads found matching &quot;{searchQuery}&quot;</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-60 overflow-y-auto border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12"></TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredAvailableLeads.map((lead) => (
+                              <TableRow key={lead.id}>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={selectedNewLeads.includes(lead.id)}
+                                    onCheckedChange={(checked) => 
+                                      handleSelectNewLead(lead.id, checked as boolean)
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell className="font-medium">{lead.name}</TableCell>
+                                <TableCell>{lead.email}</TableCell>
+                                <TableCell>
+                                  <Badge className={getStatusColor(lead.status)}>
+                                    {lead.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                    
+                    <p className="text-sm text-muted-foreground">
+                      {selectedNewLeads.length} of {availableLeads.length} leads selected
+                    </p>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddMembersOpen(false);
+                    setSelectedNewLeads([]);
+                    setSearchQuery("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={addMembersToGroup}
+                  disabled={selectedNewLeads.length === 0 || isAddingMembers}
+                >
+                  {isAddingMembers ? "Adding..." : `Add ${selectedNewLeads.length} Members`}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
 
@@ -476,9 +725,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
           <span className="text-sm text-muted-foreground">
             Showing {filteredMembers.length} of {members.length} members
           </span>
-        </div>
-
-        <Button variant="outline">
+        </div>        <Button variant="outline" onClick={handleOpenAddMembers}>
           <UserPlus className="h-4 w-4 mr-2" />
           Add Members
         </Button>
@@ -793,13 +1040,29 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-primary font-medium">
                 {selectedLeads.length} member{selectedLeads.length !== 1 ? 's' : ''} selected
-              </span>
-              <div className="flex gap-3 items-center">
-                <Button size="sm" variant="outline" onClick={handleSendSelectedEmail}>
+              </span>              <div className="flex gap-3 items-center">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleSendSelectedEmail}
+                  disabled={isUpdating === 'bulk-remove'}
+                >
                   <Mail className="h-4 w-4 mr-2" />
                   Send Bulk Email
                 </Button>
-                <Select onValueChange={(value) => updateBulkStatus(value as LeadStatus)} disabled={isUpdating === 'bulk'}>
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={bulkRemoveFromGroup}
+                  disabled={isUpdating === 'bulk-remove'}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isUpdating === 'bulk-remove' ? 'Removing...' : 'Remove from Group'}
+                </Button>
+                <Select 
+                  onValueChange={(value) => updateBulkStatus(value as LeadStatus)} 
+                  disabled={isUpdating === 'bulk' || isUpdating === 'bulk-remove'}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Update Status" />
                   </SelectTrigger>

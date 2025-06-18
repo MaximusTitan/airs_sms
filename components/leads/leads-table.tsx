@@ -28,13 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Lead, LeadStatus, FormField } from "@/lib/types/database";
 import { formatDistanceToNow, format } from "date-fns";
-import { MoreHorizontal, Edit, Trash2, Mail, Check, ChevronDown, ChevronRight, Eye, Users } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ChevronDown, ChevronRight, Mail, Users } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -243,254 +237,231 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
       router.push(`/dashboard/emails/compose?leads=${leadIds}`);
     }
   };
-
   return (
-    <Card className="overflow-hidden shadow-sm">
-      <Table>
-        <TableHeader className="bg-accent/50">
-          <TableRow>
-            <TableHead className="px-6 py-4 w-12">
+    <Card className="overflow-hidden shadow-sm border border-border/40">
+      <Table>        <TableHeader className="bg-accent/50 border-b border-border/40">
+          <TableRow className="border-b border-border/40 hover:bg-transparent">
+            <TableHead className="px-3 py-3 w-10">
               <Checkbox 
                 checked={selectedLeads.length === processedLeads.length && processedLeads.length > 0}
                 onCheckedChange={handleSelectAll}
               />
             </TableHead>
-            <TableHead className="px-6 py-4 w-12"></TableHead>
-            <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Name</TableHead>
-            <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Email</TableHead>
-            <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Phone</TableHead>
-            <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Status</TableHead>
-            <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Groups</TableHead>
-            <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Source</TableHead>
-            <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">Created</TableHead>
-            <TableHead className="px-6 py-4 text-right text-xs font-semibold text-foreground uppercase tracking-wider">Actions</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Name</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Email</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Phone</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Status</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Groups</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Source</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Created</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {processedLeads.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={10} className="px-6 py-12 text-center">
+          {processedLeads.length === 0 ? (            <TableRow>
+              <TableCell colSpan={8} className="px-6 py-16 text-center">
                 <div className="text-muted-foreground">
-                  <p className="text-lg font-medium">No leads found</p>
+                  <p className="text-lg font-medium mb-2">No leads found</p>
                   <p className="text-sm">Create a form to start collecting leads</p>
                 </div>
               </TableCell>
-            </TableRow>          ) : (
+            </TableRow>) : (
             processedLeads.flatMap((lead) => {
-              const rows = [
-                <TableRow key={lead.id} className="hover:bg-accent/30 transition-colors">
-                  <TableCell className="px-6 py-4">
+              const rows = [                <TableRow 
+                  key={lead.id} 
+                  className="hover:bg-accent/30 transition-colors border-b border-border/40 cursor-pointer"
+                  onClick={() => toggleExpandLead(lead.id)}
+                >
+                  <TableCell className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <Checkbox 
                       checked={selectedLeads.includes(lead.id)}
                       onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
                     />
                   </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleExpandLead(lead.id)}
-                      className="p-1"
-                    >
+                  <TableCell className="px-3 py-3">
+                    <div className="flex items-center gap-2">
                       {expandedLeads.includes(lead.id) ? (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
                       ) : (
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       )}
-                    </Button>
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm font-medium text-foreground">
-                      {lead.name}
+                      <div className="text-sm font-medium text-foreground truncate max-w-[150px]" title={lead.name}>
+                        {lead.name}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm text-muted-foreground">
+                  <TableCell className="px-3 py-3">
+                    <div className="text-sm text-muted-foreground truncate max-w-[200px]" title={lead.email}>
                       {lead.email}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
+                  <TableCell className="px-3 py-3">
                     <div className="text-sm text-muted-foreground">
-                      {lead.phone || 'N/A'}
+                      {lead.phone || <span className="text-xs italic">N/A</span>}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
+                  <TableCell className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={lead.status}
                       onValueChange={(value) => updateLeadStatus(lead.id, value as LeadStatus)}
                       disabled={isUpdating === lead.id}
                     >
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-28 h-8 text-xs">
                         <SelectValue>
-                          <Badge className={getStatusColor(lead.status)}>
+                          <Badge className={`text-xs ${getStatusColor(lead.status)}`}>
                             {lead.status}
                           </Badge>
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unqualified">
-                          <Badge className={getStatusColor('unqualified')}>
+                          <Badge className={`text-xs ${getStatusColor('unqualified')}`}>
                             unqualified
                           </Badge>
                         </SelectItem>
                         <SelectItem value="qualified">
-                          <Badge className={getStatusColor('qualified')}>
+                          <Badge className={`text-xs ${getStatusColor('qualified')}`}>
                             qualified
                           </Badge>
                         </SelectItem>
                         <SelectItem value="trash">
-                          <Badge className={getStatusColor('trash')}>
+                          <Badge className={`text-xs ${getStatusColor('trash')}`}>
                             trash
                           </Badge>
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
+                  <TableCell className="px-3 py-3">
                     <div className="flex flex-wrap gap-1">
                       {lead.groups && lead.groups.length > 0 ? (
                         lead.groups.map((group) => (
                           <Badge
                             key={group.id}
                             variant="secondary"
-                            className="text-xs"
+                            className="text-xs px-2 py-0.5"
+                            title={group.name}
                           >
                             {group.name}
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-xs text-muted-foreground">No groups</span>
+                        <span className="text-xs text-muted-foreground italic">No groups</span>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm text-muted-foreground">
+                  <TableCell className="px-3 py-3">
+                    <div className="text-sm text-muted-foreground truncate max-w-[100px]" title={lead.forms?.name || lead.source || 'Direct'}>
                       {lead.forms?.name || lead.source || 'Direct'}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm text-muted-foreground">
+                  <TableCell className="px-3 py-3">
+                    <div className="text-xs text-muted-foreground" title={format(new Date(lead.created_at), 'PPpp')}>
                       {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => toggleExpandLead(lead.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          {expandedLeads.includes(lead.id) ? 'Hide Details' : 'View Details'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Mail className="mr-2 h-4 w-4" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => updateLeadStatus(lead.id, lead.status === 'qualified' ? 'unqualified' : 'qualified')}
-                          disabled={isUpdating === lead.id}
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          {lead.status === 'qualified' ? 'Mark Unqualified' : 'Mark Qualified'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive hover:bg-destructive/10">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>                  </TableCell>
                 </TableRow>
               ];
 
               if (expandedLeads.includes(lead.id)) {
-                rows.push(
-                  <TableRow key={`${lead.id}-expanded`}>
-                    <TableCell colSpan={10} className="px-6 py-6 bg-accent/20">
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                rows.push(                  <TableRow key={`${lead.id}-expanded`}>
+                    <TableCell colSpan={8} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {/* Lead Information */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Lead Information</h4>
-                            <div className="space-y-3">
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Full Name:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{lead.name}</span>
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Lead Information</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="font-medium text-foreground">Full Name:</span>
+                                <span className="text-muted-foreground">{lead.name}</span>
                               </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Email:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{lead.email}</span>
+                              <div className="flex justify-between">
+                                <span className="font-medium text-foreground">Email:</span>
+                                <span className="text-muted-foreground break-all">{lead.email}</span>
                               </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Phone:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{lead.phone || 'Not provided'}</span>
+                              <div className="flex justify-between">
+                                <span className="font-medium text-foreground">Phone:</span>
+                                <span className="text-muted-foreground">{lead.phone || 'Not provided'}</span>
                               </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Source:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{lead.forms?.name || lead.source || 'Direct'}</span>
+                              <div className="flex justify-between">
+                                <span className="font-medium text-foreground">Source:</span>
+                                <span className="text-muted-foreground">{lead.forms?.name || lead.source || 'Direct'}</span>
                               </div>
-                              <div>
-                                <span className="text-sm font-medium text-foreground">Status:</span>
-                                <Badge className={`ml-2 ${getStatusColor(lead.status)}`}>
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-foreground">Status:</span>
+                                <Badge className={`text-xs ${getStatusColor(lead.status)}`}>
                                   {lead.status}
                                 </Badge>
                               </div>
                             </div>
                           </div>
 
-                          {/* Timestamps */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Timeline</h4>
-                            <div className="space-y-3">
+                          {/* Timeline */}
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Timeline</h4>
+                            <div className="space-y-2 text-sm">
                               <div>
-                                <span className="text-sm font-medium text-foreground">Created:</span>
-                                <div className="text-sm text-muted-foreground ml-2">
-                                  {format(new Date(lead.created_at), 'PPpp')}
+                                <span className="font-medium text-foreground block">Created:</span>
+                                <div className="text-muted-foreground text-xs mt-1">
+                                  {format(new Date(lead.created_at), 'MMM dd, yyyy HH:mm')}
                                   <br />
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="italic">
                                     ({formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })})
                                   </span>
                                 </div>
                               </div>
                               <div>
-                                <span className="text-sm font-medium text-foreground">Last Updated:</span>
-                                <div className="text-sm text-muted-foreground ml-2">
-                                  {format(new Date(lead.updated_at), 'PPpp')}
+                                <span className="font-medium text-foreground block">Last Updated:</span>
+                                <div className="text-muted-foreground text-xs mt-1">
+                                  {format(new Date(lead.updated_at), 'MMM dd, yyyy HH:mm')}
                                   <br />
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="italic">
                                     ({formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })})
                                   </span>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Tags */}
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Tags</h4>
-                          {renderTags(lead.tags)}
+                          {/* Groups & Tags */}
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Groups & Tags</h4>
+                            <div className="space-y-3">
+                              <div>
+                                <span className="font-medium text-foreground block mb-2">Groups:</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {lead.groups && lead.groups.length > 0 ? (
+                                    lead.groups.map((group) => (
+                                      <Badge key={group.id} variant="secondary" className="text-xs">
+                                        {group.name}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground italic">No groups</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="font-medium text-foreground block mb-2">Tags:</span>
+                                {renderTags(lead.tags)}
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Notes */}
                         {lead.notes && (
-                          <div className="space-y-3">
-                            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Notes</h4>
-                            <div className="p-3 bg-background rounded-md border">
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lead.notes}</p>
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Notes</h4>
+                            <div className="p-3 bg-background rounded-md border text-sm">
+                              <p className="text-muted-foreground whitespace-pre-wrap">{lead.notes}</p>
                             </div>
                           </div>
                         )}
 
                         {/* Form Data */}
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">Form Submission Data</h4>
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Form Submission Data</h4>
                           <div className="p-3 bg-background rounded-md border">
                             {renderFormData(lead.form_data, lead.forms?.fields)}
                           </div>
@@ -505,22 +476,21 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
             })
           )}
         </TableBody>
-      </Table>
-      {selectedLeads.length > 0 && (
-        <div className="px-6 py-4 bg-primary/10 border-t">
+      </Table>      {selectedLeads.length > 0 && (
+        <div className="px-4 py-3 bg-primary/5 border-t border-border/40">
           <div className="flex items-center justify-between">
             <span className="text-sm text-primary font-medium">
               {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''} selected
             </span>
-            <div className="flex gap-3 items-center">
-              <Button size="sm" variant="outline" onClick={handleSendBulkEmail}>
-                <Mail className="h-4 w-4 mr-2" />
+            <div className="flex gap-2 items-center">
+              <Button size="sm" variant="outline" onClick={handleSendBulkEmail} className="h-8">
+                <Mail className="h-3 w-3 mr-2" />
                 Send Bulk Email
               </Button>
               <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Users className="h-4 w-4 mr-2" />
+                  <Button size="sm" className="h-8">
+                    <Users className="h-3 w-3 mr-2" />
                     Create Group
                   </Button>
                 </DialogTrigger>
@@ -574,29 +544,28 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                     </Button>
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
-              <Select onValueChange={(value) => updateBulkStatus(value as LeadStatus)} disabled={isUpdating === 'bulk'}>
-                <SelectTrigger className="w-40">
+              </Dialog>              <Select onValueChange={(value) => updateBulkStatus(value as LeadStatus)} disabled={isUpdating === 'bulk'}>
+                <SelectTrigger className="w-36 h-8 text-xs">
                   <SelectValue placeholder="Update Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unqualified">
                     <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor('unqualified')}>
+                      <Badge className={`text-xs ${getStatusColor('unqualified')}`}>
                         unqualified
                       </Badge>
                     </div>
                   </SelectItem>
                   <SelectItem value="qualified">
                     <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor('qualified')}>
+                      <Badge className={`text-xs ${getStatusColor('qualified')}`}>
                         qualified
                       </Badge>
                     </div>
                   </SelectItem>
                   <SelectItem value="trash">
                     <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor('trash')}>
+                      <Badge className={`text-xs ${getStatusColor('trash')}`}>
                         trash
                       </Badge>
                     </div>

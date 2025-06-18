@@ -3,16 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Mail } from "lucide-react";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface LeadsHeaderProps {
   selectedLeads?: string[];
+  searchTerm?: string;
+  onSearchChange?: (value: string) => void;
 }
 
-export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
+export function LeadsHeader({ selectedLeads = [], searchTerm = "", onSearchChange }: LeadsHeaderProps) {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState("");
 
   const handleSendEmail = () => {
     if (selectedLeads.length > 0) {
@@ -57,11 +57,10 @@ export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
       
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />          <Input
             placeholder="Search leads..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => onSearchChange?.(e.target.value)}
             className="pl-10 border-border focus:border-primary focus:ring-primary/20"
           />
         </div>
