@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Mail } from "lucide-react";
+import { Search, Mail } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -47,10 +47,6 @@ export function GroupsHeader({ selectedGroups = [] }: GroupsHeaderProps) {
                 {selectedGroups.length}
               </span>
             )}
-          </Button>
-          <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90">
-            <Plus className="h-4 w-4" />
-            New Group
           </Button>
         </div>
       </div>

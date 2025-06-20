@@ -15,7 +15,6 @@ interface LeadsPageContentProps {
 export function LeadsPageContent({ leads }: LeadsPageContentProps) {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-
   // Filter leads based on search term
   const filteredLeads = useMemo(() => {
     if (!searchTerm.trim()) return leads;
@@ -39,17 +38,29 @@ export function LeadsPageContent({ leads }: LeadsPageContentProps) {
       // Search in form name
       const matchesForm = lead.forms?.name.toLowerCase().includes(searchLower);
 
-      // Search in form data values
+      // Search in form data values (including "Registered as" field)
       const matchesFormData = lead.form_data && Object.values(lead.form_data).some(value => 
         String(value).toLowerCase().includes(searchLower)
       );
+
+      // Search specifically in "Registered as" field
+      const matchesRegisteredAs = lead.forms?.fields && lead.form_data && (() => {
+        const roleField = lead.forms.fields.find(field => 
+          field.label.toLowerCase() === 'role' || 
+          field.label.toLowerCase() === 'registered as'
+        );
+        if (roleField && lead.form_data[roleField.id]) {
+          return String(lead.form_data[roleField.id]).toLowerCase().includes(searchLower);
+        }
+        return false;
+      })();
 
       // Search in tags
       const matchesTags = lead.tags && lead.tags.some(tag => 
         tag.toLowerCase().includes(searchLower)
       );
 
-      return matchesBasic || matchesGroup || matchesForm || matchesFormData || matchesTags;
+      return matchesBasic || matchesGroup || matchesForm || matchesFormData || matchesRegisteredAs || matchesTags;
     });
   }, [leads, searchTerm]);
 

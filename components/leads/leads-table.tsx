@@ -95,7 +95,6 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
       setSelectedLeads([]);
     }
   };
-
   const toggleExpandLead = (leadId: string) => {
     setExpandedLeads(prev => 
       prev.includes(leadId) 
@@ -103,6 +102,27 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
         : [...prev, leadId]
     );
   };
+  // Helper function to get the "Registered as" value from form data
+  const getRegisteredAsValue = (lead: typeof processedLeads[0]) => {
+    if (!lead.form_data || !lead.forms?.fields) {
+      return null;
+    }
+
+    // Find the Role field in the form definition
+    const roleField = lead.forms.fields.find(field => 
+      field.label.toLowerCase() === 'role' || 
+      field.label.toLowerCase() === 'registered as'
+    );
+
+    if (!roleField) {
+      return null;
+    }
+
+    // Get the value from form_data using the field ID
+    const roleValue = lead.form_data[roleField.id];
+    return roleValue ? String(roleValue) : null;
+  };
+
   const renderFormData = (formData: Record<string, string | boolean | number>, formFields?: FormField[]) => {
     if (!formData || Object.keys(formData).length === 0) {
       return <span className="text-muted-foreground text-sm">No additional data</span>;
@@ -159,20 +179,19 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                 checked={selectedLeads.length === processedLeads.length && processedLeads.length > 0}
                 onCheckedChange={handleSelectAll}
               />
-            </TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Name</TableHead>
+            </TableHead>            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Name</TableHead>
             <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Email</TableHead>
             <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Phone</TableHead>
+            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Role</TableHead>
             <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Status</TableHead>
             <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Groups</TableHead>
             <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Source</TableHead>
             <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Created</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {processedLeads.length === 0 ? (
+        <TableBody>          {processedLeads.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="px-6 py-16 text-center">
+              <TableCell colSpan={9} className="px-6 py-16 text-center">
                 <div className="text-muted-foreground">
                   <p className="text-lg font-medium mb-2">No leads found</p>
                   <p className="text-sm">Create a form to start collecting leads</p>
@@ -209,10 +228,14 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                     <div className="text-sm text-muted-foreground truncate max-w-[200px]" title={lead.email}>
                       {lead.email}
                     </div>
+                  </TableCell>                  <TableCell className="px-3 py-3">
+                    <div className="text-sm text-muted-foreground">
+                      {lead.phone || <span className="text-xs italic">N/A</span>}
+                    </div>
                   </TableCell>
                   <TableCell className="px-3 py-3">
                     <div className="text-sm text-muted-foreground">
-                      {lead.phone || <span className="text-xs italic">N/A</span>}
+                      {getRegisteredAsValue(lead) || <span className="text-xs italic">N/A</span>}
                     </div>
                   </TableCell>
                   <TableCell className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -278,9 +301,8 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                 </TableRow>
               ];
 
-              if (expandedLeads.includes(lead.id)) {
-                rows.push(                  <TableRow key={`${lead.id}-expanded`}>
-                    <TableCell colSpan={8} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
+              if (expandedLeads.includes(lead.id)) {                rows.push(                  <TableRow key={`${lead.id}-expanded`}>
+                    <TableCell colSpan={9} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {/* Lead Information */}
@@ -294,10 +316,13 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                               <div className="flex justify-between">
                                 <span className="font-medium text-foreground">Email:</span>
                                 <span className="text-muted-foreground break-all">{lead.email}</span>
-                              </div>
-                              <div className="flex justify-between">
+                              </div>                              <div className="flex justify-between">
                                 <span className="font-medium text-foreground">Phone:</span>
                                 <span className="text-muted-foreground">{lead.phone || 'Not provided'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="font-medium text-foreground">Registered as:</span>
+                                <span className="text-muted-foreground">{getRegisteredAsValue(lead) || 'Not provided'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="font-medium text-foreground">Source:</span>

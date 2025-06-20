@@ -31,33 +31,56 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
   const router = useRouter();
   const supabase = createClient();
     const [formName, setFormName] = useState(initialForm?.name || "");  const [formDescription, setFormDescription] = useState(initialForm?.description || "");
-  const [fields, setFields] = useState<FormField[]>([]);  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [fields, setFields] = useState<FormField[]>([]);  const [isSubmitting, setIsSubmitting] = useState(false);  const [mounted, setMounted] = useState(false);
   const [draggedFieldId, setDraggedFieldId] = useState<string | null>(null);
   const [autoScrollInterval, setAutoScrollInterval] = useState<NodeJS.Timeout | null>(null);
-  // Initialize fields after component mounts to avoid hydration issues
+  const [fixedFieldIds, setFixedFieldIds] = useState<string[]>([]);  // Initialize fields after component mounts to avoid hydration issues
   useEffect(() => {
     if (initialForm?.fields) {
       // Use existing form fields for editing
       setFields(initialForm.fields);
-    } else {
-      // Default fields for new form
-      setFields([
+      setFixedFieldIds([]); // No fixed fields when editing existing form
+    } else {      // Default fixed fields for new form
+      const defaultFields: FormField[] = [
         {
           id: generateId(),
-          type: 'text',
+          type: 'text' as const,
           label: 'Name',
-          placeholder: 'Enter your name',
+          placeholder: 'Enter your full name',
           required: true,
         },
         {
           id: generateId(),
-          type: 'email',
-          label: 'Email',
-          placeholder: 'Enter your email',
+          type: 'email' as const,
+          label: 'Email ID',
+          placeholder: 'Enter your email address',
           required: true,
         },
-      ]);
+        {
+          id: generateId(),
+          type: 'phone' as const,
+          label: 'Phone',
+          placeholder: 'Enter your phone number',
+          required: true,
+        },
+        {
+          id: generateId(),
+          type: 'text' as const,
+          label: 'City',
+          placeholder: 'Enter your city',
+          required: true,
+        },
+        {
+          id: generateId(),
+          type: 'select' as const,
+          label: 'Role',
+          placeholder: 'Select your role',
+          required: true,
+          options: ['School', 'Teacher', 'Kid'],
+        },
+      ];
+      setFields(defaultFields);
+      setFixedFieldIds(defaultFields.map(field => field.id));
     }
     setMounted(true);
   }, [initialForm]);
@@ -342,25 +365,32 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
               }`}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, field.id)}
-            >
-              <div className="flex items-start gap-4">                <div 
-                  className="cursor-grab active:cursor-grabbing mt-2 p-2 rounded-md hover:bg-accent transition-colors select-none"
-                  title="Drag to reorder field"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, field.id)}
+            >              <div className="flex items-start gap-4">                <div 
+                  className={`mt-2 p-2 rounded-md transition-colors select-none ${
+                    fixedFieldIds.includes(field.id) 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : 'cursor-grab active:cursor-grabbing hover:bg-accent'
+                  }`}
+                  title={fixedFieldIds.includes(field.id) ? "Fixed field cannot be reordered" : "Drag to reorder field"}
+                  draggable={!fixedFieldIds.includes(field.id)}
+                  onDragStart={(e) => !fixedFieldIds.includes(field.id) && handleDragStart(e, field.id)}
                   onDragEnd={handleDragEnd}
                   onDrag={handleAutoScroll}
                 >
-                  <GripVertical className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                  <GripVertical className={`h-5 w-5 transition-colors ${
+                    fixedFieldIds.includes(field.id) 
+                      ? 'text-muted-foreground/50' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`} />
                 </div>
                 
-                <div className="flex-1 space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">                    <div>
+                <div className="flex-1 space-y-3">                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">                    <div>
                       <Label>Field Type</Label>
                       <select
                         value={field.type}
                         onChange={(e) => updateField(field.id, { type: e.target.value as FormField['type'] })}
-                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                        disabled={fixedFieldIds.includes(field.id)}
+                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {fieldTypes.map(type => (
                           <option key={type.value} value={type.value}>
@@ -376,16 +406,16 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
                         value={field.label}
                         onChange={(e) => updateField(field.id, { label: e.target.value })}
                         placeholder="Enter field label"
+                        disabled={fixedFieldIds.includes(field.id)}
                       />
                     </div>
-                  </div>
-
-                  <div>
+                  </div>                  <div>
                     <Label>Placeholder</Label>
                     <Input
                       value={field.placeholder || ''}
                       onChange={(e) => updateField(field.id, { placeholder: e.target.value })}
                       placeholder="Enter placeholder text"
+                      disabled={fixedFieldIds.includes(field.id)}
                     />
                   </div>                  {field.type === 'select' && (
                     <div>
@@ -395,7 +425,8 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
                         onChange={(e) => updateField(field.id, { 
                           options: e.target.value.split('\n')
                         })}
-                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground resize-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                        disabled={fixedFieldIds.includes(field.id)}
+                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground resize-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                         rows={4}
                         placeholder="Option 1
 Option 2
@@ -408,25 +439,27 @@ Option 3"
                         }}
                       />
                     </div>
-                  )}
-
-                  <div className="flex items-center space-x-2">
+                  )}                  <div className="flex items-center space-x-2">
                     <Checkbox
                       id={`required-${field.id}`}
                       checked={field.required}
                       onCheckedChange={(checked) => updateField(field.id, { required: checked as boolean })}
+                      disabled={fixedFieldIds.includes(field.id)}
                     />
                     <Label htmlFor={`required-${field.id}`}>Required field</Label>
-                  </div>
-                </div>                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeField(field.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  </div></div>
+
+                {!fixedFieldIds.includes(field.id) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeField(field.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </Card>          ))}
         </div>

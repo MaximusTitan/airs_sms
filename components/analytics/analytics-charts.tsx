@@ -84,10 +84,9 @@ export function AnalyticsCharts({ leads }: AnalyticsChartsProps) {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Daily Leads Chart */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">      {/* Daily Leads Chart */}
       <Card className="p-6 lg:col-span-2">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           Daily Leads (Last 30 Days)
         </h3>
         <div className="h-80">
@@ -102,11 +101,9 @@ export function AnalyticsCharts({ leads }: AnalyticsChartsProps) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </Card>
-
-      {/* Leads by Status */}
+      </Card>      {/* Leads by Status */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           Leads by Status
         </h3>
         <div className="h-80">
@@ -130,11 +127,9 @@ export function AnalyticsCharts({ leads }: AnalyticsChartsProps) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </Card>
-
-      {/* Leads by Source */}
+      </Card>      {/* Leads by Source */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           Leads by Source
         </h3>
         <div className="h-80">
@@ -148,11 +143,9 @@ export function AnalyticsCharts({ leads }: AnalyticsChartsProps) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </Card>
-
-      {/* Conversion Rate Trend */}
+      </Card>      {/* Conversion Rate Trend */}
       <Card className="p-6 lg:col-span-2">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           Weekly Conversion Rate Trend
         </h3>
         <div className="h-80">

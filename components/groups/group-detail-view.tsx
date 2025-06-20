@@ -53,7 +53,6 @@ import {
   ChevronRight,
   Eye,
   Users,
-  Calendar,
   UserPlus,
   Filter,
 } from "lucide-react";
@@ -442,6 +441,27 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
 
   const statusCounts = getStatusCounts();
 
+  // Helper function to get the "Registered as" value from form data
+  const getRegisteredAsValue = (lead: LeadWithForm) => {
+    if (!lead.form_data || !lead.forms?.fields) {
+      return null;
+    }
+
+    // Find the Role field in the form definition
+    const roleField = lead.forms.fields.find(field => 
+      field.label.toLowerCase() === 'role' || 
+      field.label.toLowerCase() === 'registered as'
+    );
+
+    if (!roleField) {
+      return null;
+    }
+
+    // Get the value from form_data using the field ID
+    const roleValue = lead.form_data[roleField.id];
+    return roleValue ? String(roleValue) : null;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -686,20 +706,15 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
               {statusCounts.unqualified}
             </div>
           </CardContent>
-        </Card>
-
-        <Card>
+        </Card>        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Created
+              Trash
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">
-                {format(new Date(group.created_at), "MMM d, yyyy")}
-              </span>
+            <div className="text-2xl font-bold text-red-600">
+              {statusCounts.trash}
             </div>
           </CardContent>
         </Card>
@@ -745,8 +760,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead className="px-6 py-4 w-12"></TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
+              <TableHead className="px-6 py-4 w-12"></TableHead>              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
                 Name
               </TableHead>
               <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
@@ -754,6 +768,9 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
               </TableHead>
               <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
                 Phone
+              </TableHead>
+              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
+                Role
               </TableHead>
               <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
                 Status
@@ -766,10 +783,9 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {filteredMembers.length === 0 ? (
+          <TableBody>            {filteredMembers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="px-6 py-12 text-center">
+                <TableCell colSpan={9} className="px-6 py-12 text-center">
                   <div className="text-muted-foreground">
                     <p className="text-lg font-medium">No members found</p>
                     <p className="text-sm">
@@ -817,10 +833,14 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                     <div className="text-sm text-muted-foreground">
                       {member.leads.email}
                     </div>
+                  </TableCell>                  <TableCell className="px-6 py-4">
+                    <div className="text-sm text-muted-foreground">
+                      {member.leads.phone || "N/A"}
+                    </div>
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <div className="text-sm text-muted-foreground">
-                      {member.leads.phone || "N/A"}
+                      {getRegisteredAsValue(member.leads) || "N/A"}
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4">
@@ -909,9 +929,8 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                   </TableCell>
                 </TableRow>,
                 ...(expandedLeads.includes(member.leads.id)
-                  ? [
-                      <TableRow key={`${member.leads.id}-expanded`}>
-                        <TableCell colSpan={8} className="px-6 py-6 bg-accent/20">
+                  ? [                      <TableRow key={`${member.leads.id}-expanded`}>
+                        <TableCell colSpan={9} className="px-6 py-6 bg-accent/20">
                           <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               {/* Lead Information */}
@@ -935,13 +954,20 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                                     <span className="text-sm text-muted-foreground ml-2">
                                       {member.leads.email}
                                     </span>
-                                  </div>
-                                  <div>
+                                  </div>                                  <div>
                                     <span className="text-sm font-medium text-foreground">
                                       Phone:
                                     </span>
                                     <span className="text-sm text-muted-foreground ml-2">
                                       {member.leads.phone || "Not provided"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      Registered as:
+                                    </span>
+                                    <span className="text-sm text-muted-foreground ml-2">
+                                      {getRegisteredAsValue(member.leads) || "Not provided"}
                                     </span>
                                   </div>
                                   <div>

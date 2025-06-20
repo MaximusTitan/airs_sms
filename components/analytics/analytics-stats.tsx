@@ -75,15 +75,14 @@ export function AnalyticsStats({ leads, forms, emails }: AnalyticsStatsProps) {
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`p-2 rounded-lg ${stat.bgColor} dark:bg-opacity-20`}>
                     <Icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
-                  <h3 className="font-medium text-gray-900 dark:text-white">
+                  </div>                  <h3 className="font-medium text-foreground">
                     {stat.title}
                   </h3>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                <p className="text-2xl font-bold text-foreground mb-1">
                   {stat.value}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   {stat.description}
                 </p>
               </div>
