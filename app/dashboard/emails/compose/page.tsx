@@ -5,6 +5,7 @@ interface ComposeEmailPageProps {
   searchParams: Promise<{
     leads?: string;
     groups?: string;
+    template?: string;
   }>;
 }
 
@@ -18,11 +19,11 @@ export default async function ComposeEmailPage({ searchParams }: ComposeEmailPag
   if (!user) {
     return null;
   }
-
   // Await and parse pre-selected leads from URL params
   const params = await searchParams;
   const preSelectedLeadIds = params.leads ? params.leads.split(',') : [];
   const preSelectedGroupIds = params.groups ? params.groups.split(',') : [];
+  const preSelectedTemplateId = params.template || null;
 
   // Fetch leads for recipient selection
   const { data: leads } = await supabase
@@ -64,11 +65,11 @@ export default async function ComposeEmailPage({ searchParams }: ComposeEmailPag
             }
           </p>
         </div>
-        
-        <EmailComposer 
+          <EmailComposer 
           leads={leads || []} 
           templates={templates || []} 
           preSelectedLeads={allPreSelectedLeadIds}
+          preSelectedTemplate={preSelectedTemplateId}
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,16 +16,28 @@ interface EmailComposerProps {
   leads: Pick<Lead, 'id' | 'name' | 'email' | 'status'>[];
   templates: EmailTemplate[];
   preSelectedLeads?: string[];
+  preSelectedTemplate?: string | null;
 }
 
-export function EmailComposer({ leads, templates, preSelectedLeads = [] }: EmailComposerProps) {
+export function EmailComposer({ leads, templates, preSelectedLeads = [], preSelectedTemplate = null }: EmailComposerProps) {
   const router = useRouter();
     const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [selectedLeads, setSelectedLeads] = useState<string[]>(preSelectedLeads);  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [showPreview, setShowPreview] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);  const [isSending, setIsSending] = useState(false);
   const [sendMessage, setSendMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Handle pre-selected template
+  useEffect(() => {
+    if (preSelectedTemplate && templates.length > 0) {
+      const template = templates.find(t => t.id === preSelectedTemplate);
+      if (template) {
+        setSubject(template.subject);
+        setContent(template.content);
+        setSelectedTemplate(preSelectedTemplate);
+      }
+    }
+  }, [preSelectedTemplate, templates]);
 
   const handleLeadSelection = (leadId: string, checked: boolean) => {
     if (checked) {
@@ -132,38 +144,52 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [] }: Email
     }
   };
   return (
-    <div className="space-y-6">
-      {/* Email Templates */}
+    <div className="space-y-6">      {/* Email Templates */}
       {templates.length > 0 && (
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Email Templates
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Email Templates
+            </h2>
+            {selectedTemplate && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedTemplate("");
+                  setSubject("");
+                  setContent("");
+                }}
+              >
+                Clear Template
+              </Button>
+            )}
+          </div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {templates.map((template) => (
               <div
                 key={template.id}
-                className="p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                className={`p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors ${
+                  selectedTemplate === template.id 
+                    ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                    : 'border-border'
+                }`}
                 onClick={() => handleTemplateSelect(template.id)}
               >
-                <h3 className="font-medium text-foreground mb-1 text-sm">
-                  {template.name}
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                  {template.subject}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {template.variables.slice(0, 3).map((variable) => (
-                    <Badge key={variable} variant="secondary" className="text-xs">
-                      {variable}
-                    </Badge>
-                  ))}
-                  {template.variables.length > 3 && (
-                    <Badge variant="secondary" className="text-xs">
-                      +{template.variables.length - 3}
+                <div className="flex items-start justify-between mb-1">
+                  <h3 className="font-medium text-foreground text-sm">
+                    {template.name}
+                  </h3>
+                  {selectedTemplate === template.id && (
+                    <Badge variant="default" className="text-xs">
+                      Selected
                     </Badge>
                   )}
+                </div>                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                  {template.subject}
+                </p>
+                <div className="text-xs text-muted-foreground">
+                  Click to use this template
                 </div>
               </div>
             ))}
@@ -196,10 +222,9 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [] }: Email
                   placeholder="Enter your message here..."
                   rows={16}
                   className="text-base resize-none"
-                />
-                <div className="flex items-center justify-between mt-2">
+                />                <div className="flex items-center justify-between mt-2">
                   <p className="text-sm text-muted-foreground">
-                    Use <code>{"{{name}}"}</code> and <code>{"{{email}}"}</code> for personalization
+                    Write your email content here
                   </p>
                   <Button 
                     type="button" 
@@ -326,10 +351,12 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [] }: Email
               <Send className="h-4 w-4 mr-2" />
               {isSending ? 'Sending...' : 'Send Email'}
             </Button>
-            
-            <div className="mt-3 text-xs text-muted-foreground space-y-1">
+              <div className="mt-3 text-xs text-muted-foreground space-y-1">
               <p><span className="font-medium">Subject:</span> {subject || 'No subject'}</p>
               <p><span className="font-medium">Recipients:</span> {selectedLeads.length}</p>
+              {selectedTemplate && (
+                <p><span className="font-medium">Template:</span> {templates.find(t => t.id === selectedTemplate)?.name || 'Unknown'}</p>
+              )}
               {selectedLeads.length > 0 && (
                 <p><span className="font-medium">To:</span> {leads.filter(l => selectedLeads.includes(l.id)).map(l => l.name).slice(0, 3).join(', ')}{selectedLeads.length > 3 ? ` +${selectedLeads.length - 3} more` : ''}</p>
               )}
