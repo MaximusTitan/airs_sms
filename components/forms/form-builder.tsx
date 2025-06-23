@@ -444,7 +444,6 @@ Option 3"
                       id={`required-${field.id}`}
                       checked={field.required}
                       onCheckedChange={(checked) => updateField(field.id, { required: checked as boolean })}
-                      disabled={fixedFieldIds.includes(field.id)}
                     />
                     <Label htmlFor={`required-${field.id}`}>Required field</Label>
                   </div></div>
