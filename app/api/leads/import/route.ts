@@ -55,12 +55,11 @@ export async function POST(request: NextRequest) {
 
     let formId = selectedFormId;
 
-    // If no form is selected or it's "new", create a default form for CSV imports
+    // Check if a default CSV import form exists - no user restriction
     if (!formId || formId === 'new') {
       const { data: existingForm } = await supabase
         .from('forms')
         .select('id')
-        .eq('user_id', user.id)
         .eq('name', 'CSV Import')
         .single();
 

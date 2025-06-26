@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch all leads for the user
+    // Fetch all leads for all users - no user filtering
     const { data: leads, error } = await supabase
       .from('leads')
       .select(`
@@ -33,7 +33,6 @@ export async function GET() {
           fields
         )
       `)
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {

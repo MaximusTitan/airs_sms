@@ -14,7 +14,7 @@ export default async function LeadsPage() {
     redirect('/auth/login');
   }
 
-  // Fetch leads with form information including field definitions
+  // Fetch leads with form information including field definitions - no user filtering
   const { data: leads } = await supabase
     .from('leads')
     .select(`
@@ -24,7 +24,6 @@ export default async function LeadsPage() {
         fields
       )
     `)
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   // Fetch group memberships separately to avoid join issues

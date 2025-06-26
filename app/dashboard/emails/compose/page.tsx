@@ -25,11 +25,10 @@ export default async function ComposeEmailPage({ searchParams }: ComposeEmailPag
   const preSelectedGroupIds = params.groups ? params.groups.split(',') : [];
   const preSelectedTemplateId = params.template || null;
 
-  // Fetch leads for recipient selection
+  // Fetch leads for recipient selection - no user filtering
   const { data: leads } = await supabase
     .from('leads')
     .select('id, name, email, status')
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   // If groups are selected, fetch leads from those groups
@@ -46,11 +45,10 @@ export default async function ComposeEmailPage({ searchParams }: ComposeEmailPag
   // Combine pre-selected leads from direct selection and group selection
   const allPreSelectedLeadIds = [...new Set([...preSelectedLeadIds, ...groupLeadIds])];
 
-  // Fetch email templates
+  // Fetch email templates - no user filtering
   const { data: templates } = await supabase
     .from('email_templates')
     .select('*')
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });  return (
     <div className="p-6 min-h-full">
       <div className="max-w-7xl mx-auto">

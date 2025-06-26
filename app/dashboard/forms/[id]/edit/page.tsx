@@ -19,12 +19,11 @@ export default async function EditFormPage({ params }: EditFormPageProps) {
   if (!user) {
     return null;
   }
-  // Fetch the form to edit
+  // Fetch the form to edit - no user restriction
   const { data: form, error } = await supabase
     .from('forms')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single();
 
   if (error || !form) {

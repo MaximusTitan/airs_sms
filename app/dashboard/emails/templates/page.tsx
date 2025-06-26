@@ -12,11 +12,10 @@ export default async function TemplatesPage() {
     return null;
   }
 
-  // Fetch email templates
+  // Fetch email templates - no user filtering
   const { data: templates } = await supabase
     .from('email_templates')
     .select('*')
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   return (

@@ -108,7 +108,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch the lead
+    // Fetch the lead - no user filtering
     const { data: lead, error } = await supabase
       .from('leads')
       .select(`
@@ -129,7 +129,6 @@ export async function GET(
         )
       `)
       .eq('id', resolvedParams.id)
-      .eq('user_id', user.id)
       .single();
 
     if (error) {

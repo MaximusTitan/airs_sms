@@ -11,11 +11,10 @@ export default async function EmailsPage() {
 
   if (!user) {
     return null;
-  }  // Fetch emails with lead information for recipients
+  }  // Fetch emails with lead information for recipients - no user filtering
   const { data: emails } = await supabase
     .from('emails')
     .select('*')
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   // For each email, fetch the lead details if lead_ids exist
@@ -43,11 +42,10 @@ export default async function EmailsPage() {
       }));
     }
   }
-  // Fetch email templates
+  // Fetch email templates - no user filtering
   const { data: templates } = await supabase
     .from('email_templates')
     .select('*')
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   // Get the FROM_EMAIL from environment
   const fromEmail = process.env.FROM_EMAIL || 'AIRS@aireadyschool.com';return (

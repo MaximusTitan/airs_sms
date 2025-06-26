@@ -22,7 +22,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
   }
 
   const { id } = await params;
-  // Fetch group with detailed member information
+  // Fetch group with detailed member information - no user filtering
   const { data: group, error } = await supabase
     .from('lead_groups')
     .select(`
@@ -50,7 +50,6 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
       )
     `)
     .eq('id', id)
-    .eq('user_id', user.id)
     .single();
 
   if (error || !group) {

@@ -30,12 +30,11 @@ export async function PATCH(
         { error: 'Unauthorized' },
         { status: 401 }
       );
-    }    // Update lead status
+    }    // Update lead status - no user restriction
     const { data, error } = await supabase
       .from('leads')
       .update({ status })
       .eq('id', id)
-      .eq('user_id', user.id)
       .select()
       .single();
 

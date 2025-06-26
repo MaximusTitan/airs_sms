@@ -18,18 +18,11 @@ export async function DELETE(
 
     const { id: membershipId } = await params;
 
-    // Verify the membership belongs to a group owned by the user
+    // Check if the membership exists - no user restriction
     const { data: membership, error: membershipError } = await supabase
       .from("group_memberships")
-      .select(`
-        id,
-        lead_groups!inner (
-          id,
-          user_id
-        )
-      `)
+      .select("id")
       .eq("id", membershipId)
-      .eq("lead_groups.user_id", user.id)
       .single();
 
     if (membershipError || !membership) {

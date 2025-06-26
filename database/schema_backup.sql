@@ -1,3 +1,7 @@
+-- Backup of original schema before removing user restrictions
+-- This file contains the original schema with user-specific RLS policies
+-- Created on: 2025-06-27
+
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -52,7 +56,7 @@ CREATE TABLE IF NOT EXISTS lead_groups (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Create group_memberships table
+-- Create group_memberships table (junction table for lead_groups and leads)
 CREATE TABLE IF NOT EXISTS group_memberships (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -91,7 +95,7 @@ CREATE INDEX IF NOT EXISTS idx_emails_user_id ON emails(user_id);
 CREATE INDEX IF NOT EXISTS idx_emails_status ON emails(status);
 CREATE INDEX IF NOT EXISTS idx_emails_created_at ON emails(created_at);
 
--- Create RLS (Row Level Security) policies - Updated to allow all authenticated users to access all data
+-- Create RLS (Row Level Security) policies
 ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lead_groups ENABLE ROW LEVEL SECURITY;
@@ -99,98 +103,95 @@ ALTER TABLE group_memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE emails ENABLE ROW LEVEL SECURITY;
 
--- Forms policies - Allow all authenticated users to access all forms
-CREATE POLICY "Authenticated users can view all forms" ON forms
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+-- Forms policies
+CREATE POLICY "Users can view their own forms" ON forms
+    FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can create forms" ON forms
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can create their own forms" ON forms
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can update all forms" ON forms
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can update their own forms" ON forms
+    FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can delete all forms" ON forms
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can delete their own forms" ON forms
+    FOR DELETE USING (auth.uid() = user_id);
 
--- Leads policies - Allow all authenticated users to access all leads
-CREATE POLICY "Authenticated users can view all leads" ON leads
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+-- Leads policies
+CREATE POLICY "Users can view their own leads" ON leads
+    FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Anyone can create leads" ON leads
     FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Authenticated users can update all leads" ON leads
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can update their own leads" ON leads
+    FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can delete all leads" ON leads
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can delete their own leads" ON leads
+    FOR DELETE USING (auth.uid() = user_id);
 
--- Lead groups policies - Allow all authenticated users to access all groups
-CREATE POLICY "Authenticated users can view all lead groups" ON lead_groups
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+-- Lead groups policies
+CREATE POLICY "Users can view their own lead groups" ON lead_groups
+    FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can create lead groups" ON lead_groups
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can create their own lead groups" ON lead_groups
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can update all lead groups" ON lead_groups
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can update their own lead groups" ON lead_groups
+    FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can delete all lead groups" ON lead_groups
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can delete their own lead groups" ON lead_groups
+    FOR DELETE USING (auth.uid() = user_id);
 
--- Group memberships policies - Allow all authenticated users to access all memberships
-CREATE POLICY "Authenticated users can view all group memberships" ON group_memberships
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+-- Group memberships policies
+CREATE POLICY "Users can view group memberships for their groups" ON group_memberships
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM lead_groups 
+            WHERE lead_groups.id = group_memberships.group_id 
+            AND lead_groups.user_id = auth.uid()
+        )
+    );
 
-CREATE POLICY "Authenticated users can create group memberships" ON group_memberships
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can create group memberships for their groups" ON group_memberships
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM lead_groups 
+            WHERE lead_groups.id = group_memberships.group_id 
+            AND lead_groups.user_id = auth.uid()
+        )
+    );
 
-CREATE POLICY "Authenticated users can delete all group memberships" ON group_memberships
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can delete group memberships for their groups" ON group_memberships
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM lead_groups 
+            WHERE lead_groups.id = group_memberships.group_id 
+            AND lead_groups.user_id = auth.uid()
+        )
+    );
 
--- Email templates policies - Allow all authenticated users to access all templates
-CREATE POLICY "Authenticated users can view all email templates" ON email_templates
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+-- Email templates policies
+CREATE POLICY "Users can view their own email templates" ON email_templates
+    FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can create email templates" ON email_templates
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can create their own email templates" ON email_templates
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can update all email templates" ON email_templates
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can update their own email templates" ON email_templates
+    FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can delete all email templates" ON email_templates
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can delete their own email templates" ON email_templates
+    FOR DELETE USING (auth.uid() = user_id);
 
--- Emails policies - Allow all authenticated users to access all emails
-CREATE POLICY "Authenticated users can view all emails" ON emails
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+-- Emails policies
+CREATE POLICY "Users can view their own emails" ON emails
+    FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can create emails" ON emails
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can create their own emails" ON emails
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can update all emails" ON emails
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can update their own emails" ON emails
+    FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Authenticated users can delete all emails" ON emails
-    FOR DELETE USING (auth.uid() IS NOT NULL);
-
--- Create triggers for updated_at
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_forms_updated_at BEFORE UPDATE ON forms
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON leads
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_lead_groups_updated_at BEFORE UPDATE ON lead_groups
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_email_templates_updated_at BEFORE UPDATE ON email_templates
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE POLICY "Users can delete their own emails" ON emails
+    FOR DELETE USING (auth.uid() = user_id);

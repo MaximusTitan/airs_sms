@@ -14,7 +14,7 @@ export default async function AnalyticsPage() {
     return null;
   }
 
-  // Fetch analytics data
+  // Fetch analytics data - no user filtering
   const { data: leads } = await supabase
     .from('leads')
     .select(`
@@ -22,18 +22,15 @@ export default async function AnalyticsPage() {
       forms (
         name
       )
-    `)
-    .eq('user_id', user.id);
+    `);
 
   const { data: forms } = await supabase
     .from('forms')
-    .select('*')
-    .eq('user_id', user.id);
+    .select('*');
 
   const { data: emails } = await supabase
     .from('emails')
-    .select('*')
-    .eq('user_id', user.id);
+    .select('*');
   return (
     <div className="p-8 space-y-8 bg-background min-h-full">
       <AnalyticsHeader />

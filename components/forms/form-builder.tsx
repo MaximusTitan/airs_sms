@@ -237,8 +237,7 @@ export function FormBuilder({ initialForm }: FormBuilderProps) {
             fields: cleanedFields,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', initialForm.id)
-          .eq('user_id', user.id);        if (error) throw error;
+          .eq('id', initialForm.id);        if (error) throw error;
       } else {
         // Create new form
         const { error } = await supabase

@@ -41,12 +41,11 @@ export async function PATCH(
       );
     }
 
-    // Update the group
+    // Update the group - no user restriction
     const { data: updatedGroup, error: updateError } = await supabase
       .from("lead_groups")
       .update(updateData)
       .eq("id", groupId)
-      .eq("user_id", user.id)
       .select()
       .single();
 
@@ -88,12 +87,11 @@ export async function DELETE(
 
     const { id: groupId } = await params;
 
-    // Verify the group belongs to the user
+    // Check if the group exists - no user restriction (DELETE method)
     const { data: group, error: groupError } = await supabase
       .from("lead_groups")
       .select("id")
       .eq("id", groupId)
-      .eq("user_id", user.id)
       .single();
 
     if (groupError || !group) {
@@ -117,12 +115,11 @@ export async function DELETE(
       );
     }
 
-    // Delete the group
+    // Delete the group - no user restriction
     const { error: deleteError } = await supabase
       .from("lead_groups")
       .delete()
-      .eq("id", groupId)
-      .eq("user_id", user.id);
+      .eq("id", groupId);
 
     if (deleteError) {
       console.error("Error deleting group:", deleteError);

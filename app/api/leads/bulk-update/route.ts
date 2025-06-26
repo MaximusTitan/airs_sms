@@ -36,12 +36,11 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Update lead statuses
+    // Update lead statuses - no user restriction
     const { data, error } = await supabase
       .from('leads')
       .update({ status })
       .in('id', leadIds)
-      .eq('user_id', user.id)
       .select();
 
     if (error) {

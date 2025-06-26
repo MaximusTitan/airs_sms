@@ -26,12 +26,11 @@ export async function POST(
       );
     }
 
-    // Verify the group belongs to the user
+    // Check if the group exists - no user restriction
     const { data: group, error: groupError } = await supabase
       .from("lead_groups")
       .select("id")
       .eq("id", groupId)
-      .eq("user_id", user.id)
       .single();
 
     if (groupError || !group) {
@@ -41,12 +40,11 @@ export async function POST(
       );
     }
 
-    // Verify all leads belong to the user
+    // Verify all leads exist - no user restriction
     const { data: leads, error: leadsError } = await supabase
       .from("leads")
       .select("id")
-      .in("id", leadIds)
-      .eq("user_id", user.id);
+      .in("id", leadIds);
 
     if (leadsError || !leads || leads.length !== leadIds.length) {
       return NextResponse.json(

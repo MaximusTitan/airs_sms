@@ -30,12 +30,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }, { status: 400 });
     }
 
-    // First check if the template exists and belongs to the user
+    // Check if the template exists - no user restriction
     const { data: existingTemplate, error: fetchError } = await supabase
       .from('email_templates')
       .select('id')
       .eq('id', id)
-      .eq('user_id', user.id)
       .single();
 
     if (fetchError || !existingTemplate) {
@@ -52,7 +51,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -82,12 +80,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // First check if the template exists and belongs to the user
+    // Check if the template exists - no user restriction
     const { data: existingTemplate, error: fetchError } = await supabase
       .from('email_templates')
       .select('id')
       .eq('id', id)
-      .eq('user_id', user.id)
       .single();
 
     if (fetchError || !existingTemplate) {
@@ -97,8 +94,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { error } = await supabase
       .from('email_templates')
       .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('id', id);
 
     if (error) {
       console.error('Error deleting template:', error);

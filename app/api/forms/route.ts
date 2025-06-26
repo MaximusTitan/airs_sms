@@ -13,11 +13,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch all forms for the current user
+    // Fetch all forms for all users - no user filtering
     const { data: forms, error } = await supabase
       .from('forms')
       .select('id, name, fields')
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {

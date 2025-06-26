@@ -15,22 +15,19 @@ export default async function DashboardPage() {
     return null;
   }
 
-  // Fetch dashboard data
+  // Fetch dashboard data - no user filtering
   const { data: leads } = await supabase
     .from('leads')
     .select('*')
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   const { data: forms } = await supabase
     .from('forms')
-    .select('*')
-    .eq('user_id', user.id);
+    .select('*');
 
   const { data: emails } = await supabase
     .from('emails')
-    .select('*')
-    .eq('user_id', user.id);
+    .select('*');
 
   const stats = {
     totalLeads: leads?.length || 0,

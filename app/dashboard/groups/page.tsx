@@ -15,7 +15,7 @@ export default async function GroupsPage() {
     redirect('/auth/login');
   }
 
-  // Fetch groups with member information
+  // Fetch groups with member information - no user filtering
   const { data: groups } = await supabase
     .from('lead_groups')
     .select(`
@@ -32,7 +32,6 @@ export default async function GroupsPage() {
         )
       )
     `)
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   return (
     <div className="p-8 space-y-8 bg-background min-h-full">
