@@ -5,6 +5,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -27,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Lead, LeadStatus, FormField } from "@/lib/types/database";
 import { formatDistanceToNow, format } from "date-fns";
-import { ChevronDown, ChevronRight, MoreHorizontal, Edit, Mail } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Edit, Mail, Edit3, Save } from "lucide-react";
 
 // Import new components
 import { LeadsTableFilters, LeadsFilterOptions } from "./leads-table-filters";
@@ -35,6 +45,85 @@ import { LeadsTableActions } from "./leads-table-actions";
 import { LeadsTableHeader } from "./leads-table-header";
 import { sortData, SortConfig } from "../groups/table-sort-header";
 import { EditLeadDialog } from "./edit-lead-dialog";
+import { Pagination } from "@/components/ui/pagination";
+
+interface NotesDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  leadName: string;
+  currentNotes: string | null;
+  onSave: (notes: string) => Promise<void>;
+  isUpdating: boolean;
+}
+
+function NotesDialog({ isOpen, onClose, leadName, currentNotes, onSave, isUpdating }: NotesDialogProps) {
+  const [notes, setNotes] = useState(currentNotes || "");
+
+  const handleSave = async () => {
+    await onSave(notes);
+    onClose();
+  };
+
+  const handleClose = () => {
+    setNotes(currentNotes || "");
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Edit Notes</DialogTitle>
+          <DialogDescription>
+            Update notes for <strong>{leadName}</strong>
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add notes about this lead..."
+              rows={6}
+              className="resize-none"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isUpdating}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isUpdating}
+          >
+            {isUpdating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Notes
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface LeadsTableProps {
   leads: (Lead & { 
@@ -62,6 +151,9 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isEditLeadOpen, setIsEditLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<typeof processedLeads[0] | null>(null);
+  const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+  const [notesEditingLead, setNotesEditingLead] = useState<typeof processedLeads[0] | null>(null);
+  const [isUpdatingNotes, setIsUpdatingNotes] = useState(false);
 
   // New state for filtering and sorting
   const [filters, setFilters] = useState<LeadsFilterOptions>({
@@ -77,6 +169,10 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
     key: "",
     direction: null,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   // Get unique values for filter options
   const availableSources = useMemo(() => {
@@ -246,6 +342,8 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
             return lead.status;
           case "source":
             return lead.forms?.name || lead.source || "";
+          case "notes":
+            return lead.notes || "";
           case "role":
             return getRegisteredAsValue(lead) || "";
           case "groups":
@@ -260,6 +358,27 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
 
     return filtered;
   }, [processedLeads, filters, sortConfig, getRegisteredAsValue]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAndSortedLeads.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLeads = filteredAndSortedLeads.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, sortConfig]);
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
 
   const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
     setIsUpdating(leadId);
@@ -390,6 +509,40 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
       alert("Failed to update lead");
     } finally {
       setIsUpdating(null);
+    }
+  };
+
+  const handleNotesEdit = (leadId: string) => {
+    const lead = processedLeads.find(l => l.id === leadId);
+    if (lead) {
+      setNotesEditingLead(lead);
+      setIsNotesDialogOpen(true);
+    }
+  };
+
+  const handleUpdateNotes = async (notes: string) => {
+    if (!notesEditingLead) return;
+    
+    setIsUpdatingNotes(true);
+    try {
+      const response = await fetch(`/api/leads/${notesEditingLead.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notes }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update notes");
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating notes:", error);
+      throw error;
+    } finally {
+      setIsUpdatingNotes(false);
     }
   };
 
@@ -568,7 +721,7 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
           <TableBody>
             {filteredAndSortedLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="px-6 py-16 text-center">
+                <TableCell colSpan={11} className="px-6 py-16 text-center">
                   <div className="text-muted-foreground">
                     <p className="text-lg font-medium mb-2">No leads found</p>
                     <p className="text-sm">
@@ -579,7 +732,7 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                   </div>
                 </TableCell>
               </TableRow>
-            ) : filteredAndSortedLeads.flatMap((lead) => {
+            ) : paginatedLeads.flatMap((lead) => {
               const rows = [
                 <TableRow
                   key={lead.id} 
@@ -672,6 +825,22 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                       {lead.forms?.name || lead.source || 'Direct'}
                     </div>
                   </TableCell>
+                  <TableCell className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer hover:bg-accent/20 rounded p-1 -m-1 transition-colors group"
+                      onClick={() => handleNotesEdit(lead.id)}
+                      title="Click to edit notes"
+                    >
+                      <div className="text-sm text-muted-foreground truncate max-w-[120px]">
+                        {lead.notes ? (
+                          <span className="line-clamp-2">{lead.notes}</span>
+                        ) : (
+                          <span className="text-xs italic">Click to add notes</span>
+                        )}
+                      </div>
+                      <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                    </div>
+                  </TableCell>
                   <TableCell className="px-3 py-3">
                     <div className="text-xs text-muted-foreground" title={format(new Date(lead.created_at), 'PPpp')}>
                       {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
@@ -701,7 +870,7 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
               if (expandedLeads.includes(lead.id)) {
                 rows.push(
                   <TableRow key={`${lead.id}-expanded`}>
-                    <TableCell colSpan={10} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
+                    <TableCell colSpan={11} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
                       <div className="space-y-4">                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Lead Information */}
                           <div className="space-y-3">
@@ -791,6 +960,21 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
         </TableBody>
       </Table>
 
+      {/* Pagination */}
+      {filteredAndSortedLeads.length > 0 && (
+        <div className="border-t border-border/40">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredAndSortedLeads.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            className="py-4"
+          />
+        </div>
+      )}
+
       {/* Bulk Actions */}
       <LeadsTableActions
         selectedLeads={selectedLeads}
@@ -823,6 +1007,19 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
       lead={editingLead}
       onSave={handleSaveLead}
       isUpdating={isUpdating === editingLead?.id}
+    />
+
+    {/* Notes Dialog */}
+    <NotesDialog
+      isOpen={isNotesDialogOpen}
+      onClose={() => {
+        setIsNotesDialogOpen(false);
+        setNotesEditingLead(null);
+      }}
+      leadName={notesEditingLead?.name || ""}
+      currentNotes={notesEditingLead?.notes || null}
+      onSave={handleUpdateNotes}
+      isUpdating={isUpdatingNotes}
     />
     </div>
   );

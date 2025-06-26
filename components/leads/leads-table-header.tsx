@@ -92,6 +92,15 @@ export function LeadsTableHeader({
       </TableHead>
       <TableHead className="px-3 py-3">
         <TableSortHeader
+          label="Notes"
+          sortKey="notes"
+          currentSort={sortConfig}
+          onSort={onSort}
+          className="text-xs font-semibold text-foreground uppercase tracking-wider"
+        />
+      </TableHead>
+      <TableHead className="px-3 py-3">
+        <TableSortHeader
           label="Created"
           sortKey="created_at"
           currentSort={sortConfig}

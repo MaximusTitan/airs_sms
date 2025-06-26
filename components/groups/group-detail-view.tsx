@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +50,7 @@ import { sortData, SortConfig, TableSortHeader } from "./table-sort-header";
 import { GroupMemberRow } from "./group-member-row";
 import { LeadDetailsRow } from "./lead-details-row";
 import { EditLeadDialog } from "./edit-lead-dialog";
+import { Pagination } from "@/components/ui/pagination";
 
 interface LeadWithForm extends Lead {
   forms?: {
@@ -102,6 +103,10 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
     key: "",
     direction: null,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   const members = useMemo(() => group.group_memberships || [], [group.group_memberships]);
 
@@ -261,6 +266,8 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
             return lead.forms?.name || lead.source || "";
           case "role":
             return getRegisteredAsValue(lead) || "";
+          case "notes":
+            return lead.notes || "";
           case "created_at":
             return new Date(member.created_at);
           case "lead_created_at":
@@ -279,6 +286,27 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
 
     return filtered;
   }, [members, filters, sortConfig]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(processedMembers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMembers = processedMembers.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, sortConfig]);
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
 
   // Filter available leads based on search query
   const filteredAvailableLeads = availableLeads.filter((lead) => {
@@ -575,6 +603,29 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
         ? prev.filter((id) => id !== leadId)
         : [...prev, leadId]
     );
+  };
+
+  const updateLeadNotes = async (leadId: string, notes: string) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notes }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update notes");
+      }
+
+      // Refresh the page to get updated data
+      // In a future improvement, we could update local state instead
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating lead notes:", error);
+      throw error;
+    }
   };
 
   const handleEditLead = (leadId: string) => {
@@ -1108,6 +1159,15 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
               </TableHead>
               <TableHead className="px-6 py-4">
                 <TableSortHeader
+                  label="Notes"
+                  sortKey="notes"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
+              </TableHead>
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
                   label="Added"
                   sortKey="created_at"
                   currentSort={sortConfig}
@@ -1122,7 +1182,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
           </TableHeader>
           <TableBody>            {processedMembers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="px-6 py-12 text-center">
+                <TableCell colSpan={11} className="px-6 py-12 text-center">
                   <div className="text-muted-foreground">
                     <p className="text-lg font-medium">No members found</p>
                     <p className="text-sm">
@@ -1134,7 +1194,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              processedMembers.flatMap((member) => [
+              paginatedMembers.flatMap((member) => [
                 <GroupMemberRow
                   key={member.id}
                   member={member}
@@ -1146,6 +1206,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                   onUpdateStatus={updateLeadStatus}
                   onRemoveFromGroup={removeFromGroup}
                   onEditLead={handleEditLead}
+                  onUpdateNotes={updateLeadNotes}
                   getStatusColor={getStatusColor}
                   getRegisteredAsValue={getRegisteredAsValue}
                 />,
@@ -1163,6 +1224,21 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        {processedMembers.length > 0 && (
+          <div className="border-t border-border/40">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={processedMembers.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              className="py-4"
+            />
+          </div>
+        )}
 
         {selectedLeads.length > 0 && (
           <div className="px-6 py-4 bg-primary/10 border-t">

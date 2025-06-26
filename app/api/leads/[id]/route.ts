@@ -20,7 +20,7 @@ export async function PATCH(
     const body = await request.json();
     const { name, email, phone, status, notes, tags, form_data } = body;
 
-    // Prepare update data, converting undefined to null for database
+    // Prepare update data, only including fields that are provided
     const updateData: {
       name?: string | null;
       email?: string | null;
@@ -31,16 +31,28 @@ export async function PATCH(
       updated_at: string;
       form_data?: Record<string, unknown>;
     } = {
-      name: name !== undefined ? name : null,
-      email: email !== undefined ? email : null,
-      phone: phone !== undefined ? phone : null,
-      status,
-      notes: notes !== undefined ? notes : null,
-      tags: tags || [],
       updated_at: new Date().toISOString(),
     };
 
-    // Only include form_data if it's provided
+    // Only include fields that are explicitly provided
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (email !== undefined) {
+      updateData.email = email;
+    }
+    if (phone !== undefined) {
+      updateData.phone = phone;
+    }
+    if (status !== undefined) {
+      updateData.status = status;
+    }
+    if (notes !== undefined) {
+      updateData.notes = notes;
+    }
+    if (tags !== undefined) {
+      updateData.tags = tags;
+    }
     if (form_data !== undefined) {
       updateData.form_data = form_data;
     }

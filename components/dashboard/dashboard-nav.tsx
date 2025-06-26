@@ -33,7 +33,32 @@ export function DashboardNav() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Handle mounting and localStorage initialization
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const savedState = localStorage.getItem('dashboard-nav-collapsed');
+      if (savedState !== null) {
+        setIsCollapsed(JSON.parse(savedState));
+      }
+    } catch (error) {
+      console.error('Error loading nav state:', error);
+    }
+  }, []);
+
+  // Save collapsed state to localStorage when it changes
+  const toggleCollapsed = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    try {
+      localStorage.setItem('dashboard-nav-collapsed', JSON.stringify(newState));
+    } catch (error) {
+      console.error('Error saving nav state:', error);
+    }
+  };
 
   useEffect(() => {
     const getUser = async () => {
@@ -56,7 +81,14 @@ export function DashboardNav() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/auth/login");
-  };  return (
+  };
+
+  // Don't render until mounted to prevent hydration mismatch
+  if (!isMounted) {
+    return null;
+  }
+
+  return (
     <div className={cn(
       "flex flex-col bg-card border-r border-border shadow-sm transition-all duration-300",
       isCollapsed ? "w-16" : "w-64"
@@ -68,7 +100,7 @@ export function DashboardNav() {
           </h1>
         )}
         <Button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleCollapsed}
           variant="ghost"
           size="sm"
           className="h-8 w-8 p-0"
