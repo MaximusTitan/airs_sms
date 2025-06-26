@@ -104,25 +104,60 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
   };
   // Helper function to get the "Registered as" value from form data
   const getRegisteredAsValue = (lead: typeof processedLeads[0]) => {
-    if (!lead.form_data || !lead.forms?.fields) {
+    if (!lead.form_data) {
       return null;
     }
 
-    // Find the Role field in the form definition
-    const roleField = lead.forms.fields.find(field => 
-      field.label.toLowerCase() === 'role' || 
-      field.label.toLowerCase() === 'registered as'
-    );
+    // For form-based leads, try to find the Role field in the form definition
+    if (lead.forms?.fields) {
+      const roleField = lead.forms.fields.find(field => 
+        field.label.toLowerCase() === 'role' || 
+        field.label.toLowerCase() === 'registered as'
+      );
 
-    if (!roleField) {
-      return null;
+      if (roleField) {
+        const roleValue = lead.form_data[roleField.id];
+        if (roleValue && String(roleValue).trim() && roleValue !== '-') {
+          return String(roleValue);
+        }
+      }
     }
 
-    // Get the value from form_data using the field ID
-    const roleValue = lead.form_data[roleField.id];
-    return roleValue ? String(roleValue) : null;
+    // For CSV imports, check for role-related fields
+    const headerMapping = (lead.form_data._csv_header_mapping as unknown as Record<string, string>) || {};
+    
+    // Look for nested header mapping (actual field ID to header name mapping)
+    let actualHeaderMapping: Record<string, string> = {};
+    for (const [key, value] of Object.entries(lead.form_data)) {
+      if (key !== '_csv_header_mapping' && typeof value === 'object' && value !== null) {
+        const nestedValue = value as Record<string, string>;
+        const hasFieldIds = Object.keys(nestedValue).some(k => k.startsWith('field_') || (k.length === 36 && k.includes('-')));
+        if (hasFieldIds) {
+          actualHeaderMapping = nestedValue;
+          break;
+        }
+      }
+    }
+    
+    // Look for role-related entries
+    for (const [key, value] of Object.entries(lead.form_data)) {
+      if (key === '_csv_header_mapping' || typeof value === 'object') continue;
+      
+      const keyLower = key.toLowerCase();
+      const headerName = (headerMapping[key] || actualHeaderMapping[key] || '').toLowerCase();
+      
+      // Check if this field represents a role
+      if ((keyLower.includes('role') || 
+           keyLower.includes('registered') ||
+           headerName.includes('role') ||
+           headerName.includes('registered')) &&
+          value && String(value).trim() && value !== '-') {
+        return String(value);
+      }
+    }
+
+    return null;
   };
-
   const renderFormData = (formData: Record<string, string | boolean | number>, formFields?: FormField[]) => {
     if (!formData || Object.keys(formData).length === 0) {
       return <span className="text-muted-foreground text-sm">No additional data</span>;
@@ -130,46 +165,146 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
 
     // Create a map of field IDs to field labels for quick lookup
     const fieldLabelMap = formFields?.reduce((acc, field) => {
-      acc[field.id] = field.label;
+      if (field.id && field.label) {
+        acc[field.id] = field.label;
+      }
       return acc;
     }, {} as Record<string, string>) || {};
 
-    return (
-      <div className="space-y-2">
-        {Object.entries(formData).map(([key, value]) => {
-          // Use the field label if available, otherwise format the key
-          const displayLabel = fieldLabelMap[key] || key.replace(/[_-]/g, ' ');
-          
+    // Get the CSV header mapping if it exists
+    const headerMapping = (formData._csv_header_mapping as unknown as Record<string, string>) || {};
+    
+    // Look for nested header mapping (which contains the actual field ID to header name mapping)
+    let actualHeaderMapping: Record<string, string> = {};
+    
+    // Find the nested mapping object that contains field_* keys
+    for (const [key, value] of Object.entries(formData)) {
+      if (key !== '_csv_header_mapping' && typeof value === 'object' && value !== null) {
+        const nestedValue = value as Record<string, string>;
+        // Check if this object contains field IDs as keys
+        const hasFieldIds = Object.keys(nestedValue).some(k => k.startsWith('field_') || (k.length === 36 && k.includes('-')));
+        if (hasFieldIds) {
+          actualHeaderMapping = nestedValue;
+          break;
+        }
+      }
+    }
+
+
+
+    // Fields to exclude from form data display (already shown in Lead Information)
+    const excludeFields = new Set(['name', 'email', 'phone', 'full_name', 'fullname']);
+    
+    // Create better display labels for all keys
+    const processedEntries = Object.entries(formData)
+      .filter(([key]) => {
+        // Exclude metadata and nested mapping objects
+        return key !== '_csv_header_mapping' && 
+               typeof formData[key] !== 'object';
+      })
+      .map(([key, value]) => {
+        let displayLabel = '';
+        
+        // First priority: Check if this key is a form field ID and we have the form fields
+        if (fieldLabelMap[key]) {
+          displayLabel = fieldLabelMap[key];
+        }
+        // Second priority: Check the actual header mapping (nested object)
+        else if (actualHeaderMapping[key]) {
+          displayLabel = actualHeaderMapping[key];
+        }
+        // Third priority: Check the main CSV header mapping (UUID to field ID mapping)
+        else if (headerMapping[key]) {
+          // This maps UUID to field ID, so now look up that field ID in actualHeaderMapping
+          const fieldId = headerMapping[key];
+          if (actualHeaderMapping[fieldId]) {
+            displayLabel = actualHeaderMapping[fieldId];
+          } else {
+            // Fallback to formatting the field ID
+            displayLabel = String(fieldId)
+              .replace(/[_-]/g, ' ')
+              .replace(/([a-z])([A-Z])/g, '$1 $2')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(' ');
+          }
+        }
+        // Fourth priority: Check if it looks like a UUID (UUID keys from CSV import)
+        else if (key.length === 36 && key.includes('-')) {
+          // Try to find this UUID in the header mapping first
+          const fieldId = headerMapping[key];
+          if (fieldId && actualHeaderMapping[fieldId]) {
+            displayLabel = actualHeaderMapping[fieldId];
+          } else {
+            // Fallback for orphaned UUID keys
+            displayLabel = `Additional Field ${Object.keys(formData).filter(k => k !== '_csv_header_mapping' && typeof formData[k] !== 'object').indexOf(key) + 1}`;
+          }
+        }
+        // Fifth priority: Use the key as is and format it nicely
+        else {
+          displayLabel = key
+            .replace(/[_-]/g, ' ')
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+        }
+        
+        return { key, value, displayLabel };
+      });
+
+    const filteredEntries = processedEntries.filter(({ displayLabel, key }) => {
+      const lowerLabel = String(displayLabel).toLowerCase();
+      const lowerKey = String(key).toLowerCase();
+      
+      // Exclude basic fields that are already shown in Lead Information
+      const isBasicField = excludeFields.has(lowerLabel) ||
+                          excludeFields.has(lowerKey) ||
+                          lowerLabel.includes('name') ||
+                          lowerLabel.includes('email') ||
+                          lowerLabel.includes('phone') ||
+                          lowerLabel.includes('full name');
+      
+      // Also exclude role/registered as field since it's shown in the Role column
+      const isRoleField = lowerLabel.includes('role') || 
+                         lowerLabel.includes('registered as') ||
+                         lowerKey.includes('role');
+      
+      return !isBasicField && !isRoleField;
+    });
+
+    if (filteredEntries.length === 0) {
+      return <span className="text-muted-foreground text-sm">No additional data</span>;
+    }    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+        {filteredEntries.map(({ key, value, displayLabel }) => {
           return (
-            <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1">
-              <span className="text-sm font-medium text-foreground min-w-0 capitalize">
+            <div key={String(key)} className="space-y-1">
+              <div className="text-sm font-medium text-foreground capitalize">
                 {displayLabel}:
-              </span>
-              <span className="text-sm text-muted-foreground break-words">
-                {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
-              </span>
+              </div>
+              <div className="text-sm text-muted-foreground break-words pl-2">
+                {typeof value === 'boolean' 
+                  ? (value ? 'Yes' : 'No') 
+                  : value === '-' 
+                    ? <span className="italic text-xs">No data</span>
+                    : (
+                      <div className="whitespace-pre-wrap">
+                        {String(value).split('\n').map((line, index) => (
+                          <div key={index} className="mb-1 last:mb-0">
+                            {line.trim() || <span className="italic text-xs">Empty line</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+              </div>
             </div>
           );
         })}
       </div>
-    );
-  };
+    );};
 
-  const renderTags = (tags: string[]) => {
-    if (!tags || tags.length === 0) {
-      return <span className="text-muted-foreground text-sm">No tags</span>;
-    }
-
-    return (
-      <div className="flex flex-wrap gap-1">
-        {tags.map((tag, index) => (
-          <Badge key={index} variant="secondary" className="text-xs">
-            {tag}
-          </Badge>
-        ))}
-      </div>
-    );
-  };  return (
+  return (
     <Card className="overflow-hidden shadow-sm border border-border/40">
       <Table>
         <TableHeader className="bg-accent/50 border-b border-border/40">
@@ -223,14 +358,13 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                         {lead.name}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-3 py-3">
+                  </TableCell>                  <TableCell className="px-3 py-3">
                     <div className="text-sm text-muted-foreground truncate max-w-[200px]" title={lead.email}>
-                      {lead.email}
+                      {lead.email && lead.email !== '-' ? lead.email : <span className="text-xs italic">No email</span>}
                     </div>
                   </TableCell>                  <TableCell className="px-3 py-3">
                     <div className="text-sm text-muted-foreground">
-                      {lead.phone || <span className="text-xs italic">N/A</span>}
+                      {lead.phone && lead.phone !== '-' ? lead.phone : <span className="text-xs italic">No phone</span>}
                     </div>
                   </TableCell>
                   <TableCell className="px-3 py-3">
@@ -303,8 +437,7 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
 
               if (expandedLeads.includes(lead.id)) {                rows.push(                  <TableRow key={`${lead.id}-expanded`}>
                     <TableCell colSpan={9} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-4">                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Lead Information */}
                           <div className="space-y-3">
                             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Lead Information</h4>
@@ -312,17 +445,12 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                               <div className="flex justify-between">
                                 <span className="font-medium text-foreground">Full Name:</span>
                                 <span className="text-muted-foreground">{lead.name}</span>
-                              </div>
-                              <div className="flex justify-between">
+                              </div>                              <div className="flex justify-between">
                                 <span className="font-medium text-foreground">Email:</span>
-                                <span className="text-muted-foreground break-all">{lead.email}</span>
+                                <span className="text-muted-foreground break-all">{lead.email && lead.email !== '-' ? lead.email : 'Not provided'}</span>
                               </div>                              <div className="flex justify-between">
                                 <span className="font-medium text-foreground">Phone:</span>
-                                <span className="text-muted-foreground">{lead.phone || 'Not provided'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="font-medium text-foreground">Registered as:</span>
-                                <span className="text-muted-foreground">{getRegisteredAsValue(lead) || 'Not provided'}</span>
+                                <span className="text-muted-foreground">{lead.phone && lead.phone !== '-' ? lead.phone : 'Not provided'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="font-medium text-foreground">Source:</span>
@@ -363,39 +491,20 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                               </div>
                             </div>
                           </div>
-
-                          {/* Groups & Tags */}
-                          <div className="space-y-3">
-                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Groups & Tags</h4>
-                            <div className="space-y-3">
-                              <div>
-                                <span className="font-medium text-foreground block mb-2">Groups:</span>
-                                <div className="flex flex-wrap gap-1">
-                                  {lead.groups && lead.groups.length > 0 ? (
-                                    lead.groups.map((group) => (
-                                      <Badge key={group.id} variant="secondary" className="text-xs">
-                                        {group.name}
-                                      </Badge>
-                                    ))
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground italic">No groups</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground block mb-2">Tags:</span>
-                                {renderTags(lead.tags)}
-                              </div>
-                            </div>
-                          </div>
                         </div>
 
                         {/* Notes */}
-                        {lead.notes && (
+                        {lead.notes && lead.notes !== '-' && (
                           <div className="space-y-2">
                             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-1">Notes</h4>
                             <div className="p-3 bg-background rounded-md border text-sm">
-                              <p className="text-muted-foreground whitespace-pre-wrap">{lead.notes}</p>
+                              <div className="text-muted-foreground whitespace-pre-wrap">
+                                {lead.notes.split('\n').map((line, index) => (
+                                  <div key={index} className="mb-1 last:mb-0">
+                                    {line.trim() || <span className="text-xs italic">Empty line</span>}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         )}
