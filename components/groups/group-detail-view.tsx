@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,12 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -41,21 +35,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { LeadGroup, Lead, LeadStatus, FormField } from "@/lib/types/database";
-import { formatDistanceToNow, format } from "date-fns";
+
 import {
   ArrowLeft,
-  MoreHorizontal,
   Edit,
   Trash2,
   Mail,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Eye,
   Users,
-  UserPlus,
-  Filter,
 } from "lucide-react";
+
+// Import new components
+import { GroupTableFilters, FilterOptions } from "./group-table-filters";
+import { sortData, SortConfig, TableSortHeader } from "./table-sort-header";
+import { GroupMemberRow } from "./group-member-row";
+import { LeadDetailsRow } from "./lead-details-row";
+import { EditLeadDialog } from "./edit-lead-dialog";
 
 interface LeadWithForm extends Lead {
   forms?: {
@@ -80,10 +74,11 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
   const router = useRouter();
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
-  const [isUpdating, setIsUpdating] = useState<string | null>(null);  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
   const [isAddMembersOpen, setIsAddMembersOpen] = useState(false);
-  const [availableLeads, setAvailableLeads] = useState<LeadWithForm[]>([]);  const [selectedNewLeads, setSelectedNewLeads] = useState<string[]>([]);
+  const [availableLeads, setAvailableLeads] = useState<LeadWithForm[]>([]);
+  const [selectedNewLeads, setSelectedNewLeads] = useState<string[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
   const [isAddingMembers, setIsAddingMembers] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,11 +86,199 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
   const [groupDescription, setGroupDescription] = useState(
     group.description || ""
   );
-  const members = group.group_memberships || [];
-  const filteredMembers =
-    statusFilter === "all"
-      ? members
-      : members.filter((member) => member.leads.status === statusFilter);
+  const [isEditLeadOpen, setIsEditLeadOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<LeadWithForm | null>(null);
+
+  // New state for advanced filtering and sorting
+  const [filters, setFilters] = useState<FilterOptions>({
+    searchQuery: "",
+    statusFilter: "all",
+    sourceFilter: "all",
+    dateRange: { from: null, to: null },
+    tagsFilter: [],
+    formFilter: "all",
+  });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "",
+    direction: null,
+  });
+
+  const members = useMemo(() => group.group_memberships || [], [group.group_memberships]);
+
+  // Get unique values for filter options
+  const availableSources = useMemo(() => {
+    const sources = members
+      .map(member => member.leads.source)
+      .filter((source): source is string => Boolean(source));
+    return Array.from(new Set(sources));
+  }, [members]);
+
+  const availableTags = useMemo(() => {
+    const allTags = members.flatMap(member => member.leads.tags || []);
+    return Array.from(new Set(allTags)).filter(Boolean);
+  }, [members]);
+
+  const availableForms = useMemo(() => {
+    const forms = members
+      .map(member => member.leads.forms)
+      .filter(Boolean)
+      .map(form => ({ id: form!.name, name: form!.name }));
+    return Array.from(
+      new Map(forms.map(form => [form.id, form])).values()
+    );
+  }, [members]);
+
+  // Helper function to get the "Registered as" value from form data
+  const getRegisteredAsValue = (lead: LeadWithForm) => {
+    if (!lead.form_data) {
+      return null;
+    }
+
+    // For form-based leads, try to find the Role field in the form definition
+    if (lead.forms?.fields) {
+      const roleField = lead.forms.fields.find(field => 
+        field.label.toLowerCase() === 'role' || 
+        field.label.toLowerCase() === 'registered as'
+      );
+
+      if (roleField) {
+        const roleValue = lead.form_data[roleField.id];
+        if (roleValue && String(roleValue).trim() && roleValue !== '-') {
+          return String(roleValue);
+        }
+      }
+    }
+
+    // For CSV imports, check for role-related fields
+    const headerMapping = (lead.form_data._csv_header_mapping as unknown as Record<string, string>) || {};
+    
+    // Look for nested header mapping
+    let actualHeaderMapping: Record<string, string> = {};
+    for (const [key, value] of Object.entries(lead.form_data)) {
+      if (key !== '_csv_header_mapping' && typeof value === 'object' && value !== null) {
+        const nestedValue = value as Record<string, string>;
+        const hasFieldIds = Object.keys(nestedValue).some(k => k.startsWith('field_') || (k.length === 36 && k.includes('-')));
+        if (hasFieldIds) {
+          actualHeaderMapping = nestedValue;
+          break;
+        }
+      }
+    }
+    
+    // Look for role-related entries
+    for (const [key, value] of Object.entries(lead.form_data)) {
+      if (key === '_csv_header_mapping' || typeof value === 'object') continue;
+      
+      const keyLower = key.toLowerCase();
+      const headerName = (headerMapping[key] || actualHeaderMapping[key] || '').toLowerCase();
+      
+      if ((keyLower.includes('role') || 
+           keyLower.includes('registered') ||
+           headerName.includes('role') ||
+           headerName.includes('registered')) &&
+          value && String(value).trim() && value !== '-') {
+        return String(value);
+      }
+    }
+
+    return null;
+  };
+
+  // Apply filters and sorting
+  const processedMembers = useMemo(() => {
+    let filtered = members.filter((member) => {
+      const lead = member.leads;
+      
+      // Search filter
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
+        const searchMatch = 
+          (lead.name && lead.name.toLowerCase().includes(query)) ||
+          (lead.email && lead.email.toLowerCase().includes(query)) ||
+          (lead.phone && lead.phone.toLowerCase().includes(query));
+        if (!searchMatch) return false;
+      }
+
+      // Status filter
+      if (filters.statusFilter !== "all" && lead.status !== filters.statusFilter) {
+        return false;
+      }
+
+      // Source filter
+      if (filters.sourceFilter !== "all") {
+        const leadSource = lead.forms?.name || lead.source;
+        if (leadSource !== filters.sourceFilter) {
+          return false;
+        }
+      }
+
+      // Form filter
+      if (filters.formFilter !== "all") {
+        if (filters.formFilter === "none" && lead.forms) {
+          return false;
+        }
+        if (filters.formFilter !== "none" && (!lead.forms || lead.forms.name !== filters.formFilter)) {
+          return false;
+        }
+      }
+
+      // Date range filter
+      if (filters.dateRange.from || filters.dateRange.to) {
+        const memberDate = new Date(member.created_at);
+        if (filters.dateRange.from && memberDate < filters.dateRange.from) {
+          return false;
+        }
+        if (filters.dateRange.to && memberDate > filters.dateRange.to) {
+          return false;
+        }
+      }
+
+      // Tags filter
+      if (filters.tagsFilter.length > 0) {
+        const leadTags = lead.tags || [];
+        const hasMatchingTag = filters.tagsFilter.some(tag => leadTags.includes(tag));
+        if (!hasMatchingTag) return false;
+      }
+
+      return true;
+    });
+
+    // Apply sorting
+    if (sortConfig.key && sortConfig.direction) {
+      filtered = sortData(filtered, sortConfig, (member, key) => {
+        const lead = member.leads;
+        
+        switch (key) {
+          case "name":
+            return lead.name || "";
+          case "email":
+            return lead.email || "";
+          case "phone":
+            return lead.phone || "";
+          case "status":
+            return lead.status;
+          case "source":
+            return lead.forms?.name || lead.source || "";
+          case "role":
+            return getRegisteredAsValue(lead) || "";
+          case "created_at":
+            return new Date(member.created_at);
+          case "lead_created_at":
+            return new Date(lead.created_at);
+          case "updated_at":
+            return new Date(lead.updated_at);
+          case "tags":
+            return (lead.tags || []).join(", ");
+          case "tag_count":
+            return (lead.tags || []).length;
+          default:
+            return "";
+        }
+      });
+    }
+
+    return filtered;
+  }, [members, filters, sortConfig]);
 
   // Filter available leads based on search query
   const filteredAvailableLeads = availableLeads.filter((lead) => {
@@ -103,8 +286,8 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
     
     const query = searchQuery.toLowerCase();
     return (
-      lead.name.toLowerCase().includes(query) ||
-      lead.email.toLowerCase().includes(query) ||
+      (lead.name && lead.name.toLowerCase().includes(query)) ||
+      (lead.email && lead.email.toLowerCase().includes(query)) ||
       (lead.phone && lead.phone.toLowerCase().includes(query))
     );
   });
@@ -380,7 +563,7 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedLeads(filteredMembers.map((member) => member.leads.id));
+      setSelectedLeads(processedMembers.map((member) => member.leads.id));
     } else {
       setSelectedLeads([]);
     }
@@ -392,6 +575,40 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
         ? prev.filter((id) => id !== leadId)
         : [...prev, leadId]
     );
+  };
+
+  const handleEditLead = (leadId: string) => {
+    const member = members.find(m => m.leads.id === leadId);
+    if (member) {
+      setEditingLead(member.leads);
+      setIsEditLeadOpen(true);
+    }
+  };
+
+  const handleSaveLead = async (leadId: string, updatedLead: Partial<LeadWithForm>) => {
+    setIsUpdating(leadId);
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedLead),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update lead");
+      }
+
+      setIsEditLeadOpen(false);
+      setEditingLead(null);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      alert("Failed to update lead");
+    } finally {
+      setIsUpdating(null);
+    }
   };
 
   const renderFormData = (
@@ -406,32 +623,141 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
       );
     }
 
-    const fieldLabelMap =
-      formFields?.reduce((acc, field) => {
+    // Create a map of field IDs to field labels for quick lookup
+    const fieldLabelMap = formFields?.reduce((acc, field) => {
+      if (field.id && field.label) {
         acc[field.id] = field.label;
-        return acc;
-      }, {} as Record<string, string>) || {};
+      }
+      return acc;
+    }, {} as Record<string, string>) || {};
+
+    // Get the CSV header mapping if it exists
+    const headerMapping = (formData._csv_header_mapping as unknown as Record<string, string>) || {};
+    
+    // Look for nested header mapping (which contains the actual field ID to header name mapping)
+    let actualHeaderMapping: Record<string, string> = {};
+    
+    // Find the nested mapping object that contains field_* keys
+    for (const [key, value] of Object.entries(formData)) {
+      if (key !== '_csv_header_mapping' && typeof value === 'object' && value !== null) {
+        const nestedValue = value as Record<string, string>;
+        // Check if this object contains field IDs as keys
+        const hasFieldIds = Object.keys(nestedValue).some(k => k.startsWith('field_') || (k.length === 36 && k.includes('-')));
+        if (hasFieldIds) {
+          actualHeaderMapping = nestedValue;
+          break;
+        }
+      }
+    }
+
+    // Fields to exclude from form data display (already shown in Lead Information)
+    const excludeFields = new Set(['name', 'email', 'phone', 'full_name', 'fullname']);
+    
+    // Create better display labels for all keys
+    const processedEntries = Object.entries(formData)
+      .filter(([key]) => {
+        // Exclude metadata and nested mapping objects
+        return key !== '_csv_header_mapping' && 
+               typeof formData[key] !== 'object';
+      })
+      .map(([key, value]) => {
+        let displayLabel = '';
+        
+        // First priority: Check if this key is a form field ID and we have the form fields
+        if (fieldLabelMap[key]) {
+          displayLabel = fieldLabelMap[key];
+        }
+        // Second priority: Check the actual header mapping (nested object)
+        else if (actualHeaderMapping[key]) {
+          displayLabel = actualHeaderMapping[key];
+        }
+        // Third priority: Check the main CSV header mapping (UUID to field ID mapping)
+        else if (headerMapping[key]) {
+          // This maps UUID to field ID, so now look up that field ID in actualHeaderMapping
+          const fieldId = headerMapping[key];
+          if (actualHeaderMapping[fieldId]) {
+            displayLabel = actualHeaderMapping[fieldId];
+          } else {
+            // Fallback to formatting the field ID
+            displayLabel = String(fieldId)
+              .replace(/[_-]/g, ' ')
+              .replace(/([a-z])([A-Z])/g, '$1 $2')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(' ');
+          }
+        }
+        // Fourth priority: Check if it looks like a UUID (UUID keys from CSV import)
+        else if (key.length === 36 && key.includes('-')) {
+          // Try to find this UUID in the header mapping first
+          const fieldId = headerMapping[key];
+          if (fieldId && actualHeaderMapping[fieldId]) {
+            displayLabel = actualHeaderMapping[fieldId];
+          } else {
+            // Fallback for orphaned UUID keys
+            displayLabel = `Additional Field ${Object.keys(formData).filter(k => k !== '_csv_header_mapping' && typeof formData[k] !== 'object').indexOf(key) + 1}`;
+          }
+        }
+        // Fifth priority: Use the key as is and format it nicely
+        else {
+          displayLabel = key
+            .replace(/[_-]/g, ' ')
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+        }
+        
+        return { key, value, displayLabel };
+      });
+
+    const filteredEntries = processedEntries.filter(({ displayLabel, key }) => {
+      const lowerLabel = String(displayLabel).toLowerCase();
+      const lowerKey = String(key).toLowerCase();
+      
+      // Exclude basic fields that are already shown in Lead Information
+      const isBasicField = excludeFields.has(lowerLabel) ||
+                          excludeFields.has(lowerKey) ||
+                          lowerLabel.includes('name') ||
+                          lowerLabel.includes('email') ||
+                          lowerLabel.includes('phone') ||
+                          lowerLabel.includes('full name');
+      
+      // Also exclude role/registered as field since it's shown in the Role column
+      const isRoleField = lowerLabel.includes('role') || 
+                         lowerLabel.includes('registered as') ||
+                         lowerKey.includes('role');
+      
+      return !isBasicField && !isRoleField;
+    });
+
+    if (filteredEntries.length === 0) {
+      return <span className="text-muted-foreground text-sm">No additional data</span>;
+    }
 
     return (
-      <div className="space-y-2">
-        {Object.entries(formData).map(([key, value]) => {
-          const displayLabel = fieldLabelMap[key] || key.replace(/[_-]/g, " ");
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+        {filteredEntries.map(({ key, value, displayLabel }) => {
           return (
-            <div
-              key={key}
-              className="flex flex-col sm:flex-row sm:items-center gap-1"
-            >
-              <span className="text-sm font-medium text-foreground min-w-0 capitalize">
+            <div key={String(key)} className="space-y-1">
+              <div className="text-sm font-medium text-foreground capitalize">
                 {displayLabel}:
-              </span>
-              <span className="text-sm text-muted-foreground break-words">
-                {typeof value === "boolean"
-                  ? value
-                    ? "Yes"
-                    : "No"
-                  : String(value)}
-              </span>
+              </div>
+              <div className="text-sm text-muted-foreground break-words pl-2">
+                {typeof value === 'boolean' 
+                  ? (value ? 'Yes' : 'No') 
+                  : value === '-' 
+                    ? <span className="italic text-xs">No data</span>
+                    : (
+                      <div className="whitespace-pre-wrap">
+                        {String(value).split('\n').map((line, index) => (
+                          <div key={index} className="mb-1 last:mb-0">
+                            {line.trim() || <span className="italic text-xs">Empty line</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+              </div>
             </div>
           );
         })}
@@ -440,27 +766,6 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
   };
 
   const statusCounts = getStatusCounts();
-
-  // Helper function to get the "Registered as" value from form data
-  const getRegisteredAsValue = (lead: LeadWithForm) => {
-    if (!lead.form_data || !lead.forms?.fields) {
-      return null;
-    }
-
-    // Find the Role field in the form definition
-    const roleField = lead.forms.fields.find(field => 
-      field.label.toLowerCase() === 'role' || 
-      field.label.toLowerCase() === 'registered as'
-    );
-
-    if (!roleField) {
-      return null;
-    }
-
-    // Get the value from form_data using the field ID
-    const roleValue = lead.form_data[roleField.id];
-    return roleValue ? String(roleValue) : null;
-  };
 
   return (
     <div className="space-y-6">
@@ -720,31 +1025,17 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
         </Card>
       </div>
 
-      {/* Filters and Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="qualified">Qualified</SelectItem>
-                <SelectItem value="unqualified">Unqualified</SelectItem>
-                <SelectItem value="trash">Trash</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <span className="text-sm text-muted-foreground">
-            Showing {filteredMembers.length} of {members.length} members
-          </span>
-        </div>        <Button variant="outline" onClick={handleOpenAddMembers}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Members
-        </Button>
-      </div>
+      {/* New Filters Component */}
+      <GroupTableFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        availableSources={availableSources}
+        availableTags={availableTags}
+        availableForms={availableForms}
+        totalMembers={members.length}
+        filteredCount={processedMembers.length}
+        onAddMembers={handleOpenAddMembers}
+      />
 
       {/* Members Table */}
       <Card className="overflow-hidden shadow-sm">
@@ -754,306 +1045,118 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
               <TableHead className="px-6 py-4 w-12">
                 <Checkbox
                   checked={
-                    selectedLeads.length === filteredMembers.length &&
-                    filteredMembers.length > 0
+                    selectedLeads.length === processedMembers.length &&
+                    processedMembers.length > 0
                   }
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead className="px-6 py-4 w-12"></TableHead>              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
-                Name
+              <TableHead className="px-6 py-4 w-12"></TableHead>
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
+                  label="Name"
+                  sortKey="name"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
               </TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
-                Email
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
+                  label="Email"
+                  sortKey="email"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
               </TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
-                Phone
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
+                  label="Phone"
+                  sortKey="phone"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
               </TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
-                Role
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
+                  label="Role"
+                  sortKey="role"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
               </TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
-                Status
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
+                  label="Status"
+                  sortKey="status"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
               </TableHead>
-              <TableHead className="px-6 py-4 text-xs font-semibold text-foreground uppercase tracking-wider">
-                Added
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
+                  label="Source"
+                  sortKey="source"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
+              </TableHead>
+              <TableHead className="px-6 py-4">
+                <TableSortHeader
+                  label="Added"
+                  sortKey="created_at"
+                  currentSort={sortConfig}
+                  onSort={setSortConfig}
+                  className="text-xs font-semibold text-foreground uppercase tracking-wider"
+                />
               </TableHead>
               <TableHead className="px-6 py-4 text-right text-xs font-semibold text-foreground uppercase tracking-wider">
                 Actions
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>            {filteredMembers.length === 0 ? (
+          <TableBody>            {processedMembers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="px-6 py-12 text-center">
+                <TableCell colSpan={10} className="px-6 py-12 text-center">
                   <div className="text-muted-foreground">
                     <p className="text-lg font-medium">No members found</p>
                     <p className="text-sm">
-                      {statusFilter === "all"
+                      {members.length === 0
                         ? "This group doesn't have any members yet"
-                        : `No members with status "${statusFilter}"`}
+                        : "No members match the current filters"}
                     </p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
-              filteredMembers.flatMap((member) => [
-                <TableRow
+              processedMembers.flatMap((member) => [
+                <GroupMemberRow
                   key={member.id}
-                  className="hover:bg-accent/30 transition-colors"
-                >
-                  <TableCell className="px-6 py-4">
-                    <Checkbox
-                      checked={selectedLeads.includes(member.leads.id)}
-                      onCheckedChange={(checked) =>
-                        handleSelectLead(member.leads.id, checked as boolean)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleExpandLead(member.leads.id)}
-                      className="p-1"
-                    >
-                      {expandedLeads.includes(member.leads.id) ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm font-medium text-foreground">
-                      {member.leads.name}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm text-muted-foreground">
-                      {member.leads.email}
-                    </div>
-                  </TableCell>                  <TableCell className="px-6 py-4">
-                    <div className="text-sm text-muted-foreground">
-                      {member.leads.phone || "N/A"}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm text-muted-foreground">
-                      {getRegisteredAsValue(member.leads) || "N/A"}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <Select
-                      value={member.leads.status}
-                      onValueChange={(value) =>
-                        updateLeadStatus(member.leads.id, value as LeadStatus)
-                      }
-                      disabled={isUpdating === member.leads.id}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue>
-                          <Badge className={getStatusColor(member.leads.status)}>
-                            {member.leads.status}
-                          </Badge>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unqualified">
-                          <Badge className={getStatusColor("unqualified")}>
-                            unqualified
-                          </Badge>
-                        </SelectItem>
-                        <SelectItem value="qualified">
-                          <Badge className={getStatusColor("qualified")}>
-                            qualified
-                          </Badge>
-                        </SelectItem>
-                        <SelectItem value="trash">
-                          <Badge className={getStatusColor("trash")}>
-                            trash
-                          </Badge>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(member.created_at), {
-                        addSuffix: true,
-                      })}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-6 py-4 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => toggleExpandLead(member.leads.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          {expandedLeads.includes(member.leads.id) ? 'Hide Details' : 'View Details'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Mail className="mr-2 h-4 w-4" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            updateLeadStatus(
-                              member.leads.id,
-                              member.leads.status === "qualified"
-                                ? "unqualified"
-                                : "qualified"
-                            )
-                          }
-                          disabled={isUpdating === member.leads.id}
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          {member.leads.status === "qualified"
-                            ? "Mark Unqualified"
-                            : "Mark Qualified"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive hover:bg-destructive/10"
-                          onClick={() => removeFromGroup(member.id)}
-                          disabled={isUpdating === member.id}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Remove from Group
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>,
+                  member={member}
+                  isSelected={selectedLeads.includes(member.leads.id)}
+                  isExpanded={expandedLeads.includes(member.leads.id)}
+                  isUpdating={isUpdating}
+                  onSelectLead={handleSelectLead}
+                  onToggleExpand={toggleExpandLead}
+                  onUpdateStatus={updateLeadStatus}
+                  onRemoveFromGroup={removeFromGroup}
+                  onEditLead={handleEditLead}
+                  getStatusColor={getStatusColor}
+                  getRegisteredAsValue={getRegisteredAsValue}
+                />,
                 ...(expandedLeads.includes(member.leads.id)
-                  ? [                      <TableRow key={`${member.leads.id}-expanded`}>
-                        <TableCell colSpan={9} className="px-6 py-6 bg-accent/20">
-                          <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {/* Lead Information */}
-                              <div className="space-y-4">
-                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                                  Lead Information
-                                </h4>
-                                <div className="space-y-3">
-                                  <div>
-                                    <span className="text-sm font-medium text-foreground">
-                                      Full Name:
-                                    </span>
-                                    <span className="text-sm text-muted-foreground ml-2">
-                                      {member.leads.name}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium text-foreground">
-                                      Email:
-                                    </span>
-                                    <span className="text-sm text-muted-foreground ml-2">
-                                      {member.leads.email}
-                                    </span>
-                                  </div>                                  <div>
-                                    <span className="text-sm font-medium text-foreground">
-                                      Phone:
-                                    </span>
-                                    <span className="text-sm text-muted-foreground ml-2">
-                                      {member.leads.phone || "Not provided"}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium text-foreground">
-                                      Registered as:
-                                    </span>
-                                    <span className="text-sm text-muted-foreground ml-2">
-                                      {getRegisteredAsValue(member.leads) || "Not provided"}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium text-foreground">
-                                      Source:
-                                    </span>
-                                    <span className="text-sm text-muted-foreground ml-2">
-                                      {member.leads.forms?.name ||
-                                        member.leads.source ||
-                                        "Direct"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Timestamps */}
-                              <div className="space-y-4">
-                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                                  Timeline
-                                </h4>
-                                <div className="space-y-3">
-                                  <div>
-                                    <span className="text-sm font-medium text-foreground">
-                                      Lead Created:
-                                    </span>
-                                    <div className="text-sm text-muted-foreground ml-2">
-                                      {format(new Date(member.leads.created_at), "PPpp")}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium text-foreground">
-                                      Added to Group:
-                                    </span>
-                                    <div className="text-sm text-muted-foreground ml-2">
-                                      {format(new Date(member.created_at), "PPpp")}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Tags */}
-                            {member.leads.tags && member.leads.tags.length > 0 && (
-                              <div className="space-y-3">
-                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                                  Tags
-                                </h4>
-                                <div className="flex flex-wrap gap-1">
-                                  {member.leads.tags.map((tag, index) => (
-                                    <Badge key={index} variant="secondary" className="text-xs">
-                                      {tag}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Notes */}
-                            {member.leads.notes && (
-                              <div className="space-y-3">
-                                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                                  Notes
-                                </h4>
-                                <div className="p-3 bg-background rounded-md border">
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {member.leads.notes}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Form Data */}
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                                Form Submission Data
-                              </h4>
-                              <div className="p-3 bg-background rounded-md border">
-                                {renderFormData(
-                                  member.leads.form_data,
-                                  member.leads.forms?.fields
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                  ? [
+                      <LeadDetailsRow
+                        key={`${member.leads.id}-expanded`}
+                        member={member}
+                        getRegisteredAsValue={getRegisteredAsValue}
+                        renderFormData={renderFormData}
+                      />
                     ]
                   : [])
               ])
@@ -1115,6 +1218,18 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
           </div>
         )}
       </Card>
+
+      {/* Edit Lead Dialog */}
+      <EditLeadDialog
+        isOpen={isEditLeadOpen}
+        onClose={() => {
+          setIsEditLeadOpen(false);
+          setEditingLead(null);
+        }}
+        lead={editingLead}
+        onSave={handleSaveLead}
+        isUpdating={isUpdating === editingLead?.id}
+      />
     </div>
   );
 }

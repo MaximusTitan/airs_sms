@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -19,9 +19,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Lead, LeadStatus, FormField } from "@/lib/types/database";
 import { formatDistanceToNow, format } from "date-fns";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Edit, Mail } from "lucide-react";
+
+// Import new components
+import { LeadsTableFilters, LeadsFilterOptions } from "./leads-table-filters";
+import { LeadsTableActions } from "./leads-table-actions";
+import { LeadsTableHeader } from "./leads-table-header";
+import { sortData, SortConfig } from "../groups/table-sort-header";
+import { EditLeadDialog } from "./edit-lead-dialog";
 
 interface LeadsTableProps {
   leads: (Lead & { 
@@ -43,67 +56,60 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
   const processedLeads = leads.map(lead => ({
     ...lead,
     groups: lead.group_memberships?.map(membership => membership.lead_groups) || []
-  }));  const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
+  }));
+
+  const [expandedLeads, setExpandedLeads] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isEditLeadOpen, setIsEditLeadOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<typeof processedLeads[0] | null>(null);
 
-  const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
-    setIsUpdating(leadId);
-    try {
-      const response = await fetch(`/api/leads/${leadId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+  // New state for filtering and sorting
+  const [filters, setFilters] = useState<LeadsFilterOptions>({
+    searchQuery: "",
+    statusFilter: "all",
+    sourceFilter: "all",
+    groupFilter: "all",
+    dateRange: { from: null, to: null },
+    tagsFilter: [],
+    formFilter: "all",
+  });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "",
+    direction: null,
+  });
 
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
+  // Get unique values for filter options
+  const availableSources = useMemo(() => {
+    const sources = processedLeads
+      .map(lead => lead.forms?.name || lead.source)
+      .filter((source): source is string => Boolean(source));
+    return Array.from(new Set(sources));
+  }, [processedLeads]);
 
-      window.location.reload();
-    } catch (error) {
-      console.error('Error updating lead status:', error);
-    } finally {      setIsUpdating(null);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'qualified':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'unqualified':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'trash':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-muted text-muted-foreground border-border';
-    }
-  };
-
-  const handleSelectLead = (leadId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedLeads([...selectedLeads, leadId]);
-    } else {
-      setSelectedLeads(selectedLeads.filter(id => id !== leadId));
-    }
-  };
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedLeads(processedLeads.map(lead => lead.id));
-    } else {
-      setSelectedLeads([]);
-    }
-  };
-  const toggleExpandLead = (leadId: string) => {
-    setExpandedLeads(prev => 
-      prev.includes(leadId) 
-        ? prev.filter(id => id !== leadId)
-        : [...prev, leadId]
+  const availableGroups = useMemo(() => {
+    const allGroups = processedLeads.flatMap(lead => lead.groups);
+    return Array.from(
+      new Map(allGroups.map(group => [group.id, group])).values()
     );
-  };
+  }, [processedLeads]);
+
+  const availableTags = useMemo(() => {
+    const allTags = processedLeads.flatMap(lead => lead.tags || []);
+    return Array.from(new Set(allTags)).filter(Boolean);
+  }, [processedLeads]);
+
+  const availableForms = useMemo(() => {
+    const forms = processedLeads
+      .map(lead => lead.forms)
+      .filter(Boolean)
+      .map(form => ({ id: form!.name, name: form!.name }));
+    return Array.from(
+      new Map(forms.map(form => [form.id, form])).values()
+    );
+  }, [processedLeads]);
+
   // Helper function to get the "Registered as" value from form data
-  const getRegisteredAsValue = (lead: typeof processedLeads[0]) => {
+  const getRegisteredAsValue = useCallback((lead: typeof processedLeads[0]) => {
     if (!lead.form_data) {
       return null;
     }
@@ -157,7 +163,236 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
     }
 
     return null;
+  }, []);
+
+  // Apply filters and sorting
+  const filteredAndSortedLeads = useMemo(() => {
+    let filtered = processedLeads.filter((lead) => {
+      // Search filter
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
+        const searchMatch = 
+          (lead.name && lead.name.toLowerCase().includes(query)) ||
+          (lead.email && lead.email.toLowerCase().includes(query)) ||
+          (lead.phone && lead.phone.toLowerCase().includes(query));
+        if (!searchMatch) return false;
+      }
+
+      // Status filter
+      if (filters.statusFilter !== "all" && lead.status !== filters.statusFilter) {
+        return false;
+      }
+
+      // Source filter
+      if (filters.sourceFilter !== "all") {
+        const leadSource = lead.forms?.name || lead.source;
+        if (leadSource !== filters.sourceFilter) {
+          return false;
+        }
+      }
+
+      // Group filter
+      if (filters.groupFilter !== "all") {
+        if (filters.groupFilter === "none" && lead.groups.length > 0) {
+          return false;
+        }
+        if (filters.groupFilter !== "none" && !lead.groups.some(group => group.id === filters.groupFilter)) {
+          return false;
+        }
+      }
+
+      // Form filter
+      if (filters.formFilter !== "all") {
+        if (filters.formFilter === "none" && lead.forms) {
+          return false;
+        }
+        if (filters.formFilter !== "none" && (!lead.forms || lead.forms.name !== filters.formFilter)) {
+          return false;
+        }
+      }
+
+      // Date range filter
+      if (filters.dateRange.from || filters.dateRange.to) {
+        const leadDate = new Date(lead.created_at);
+        if (filters.dateRange.from && leadDate < filters.dateRange.from) {
+          return false;
+        }
+        if (filters.dateRange.to && leadDate > filters.dateRange.to) {
+          return false;
+        }
+      }
+
+      // Tags filter
+      if (filters.tagsFilter.length > 0) {
+        const leadTags = lead.tags || [];
+        const hasMatchingTag = filters.tagsFilter.some(tag => leadTags.includes(tag));
+        if (!hasMatchingTag) return false;
+      }
+
+      return true;
+    });
+
+    // Apply sorting
+    if (sortConfig.key && sortConfig.direction) {
+      filtered = sortData(filtered, sortConfig, (lead, key) => {
+        switch (key) {
+          case "name":
+            return lead.name || "";
+          case "email":
+            return lead.email || "";
+          case "phone":
+            return lead.phone || "";
+          case "status":
+            return lead.status;
+          case "source":
+            return lead.forms?.name || lead.source || "";
+          case "role":
+            return getRegisteredAsValue(lead) || "";
+          case "groups":
+            return lead.groups.length > 0 ? lead.groups[0].name : "";
+          case "created_at":
+            return new Date(lead.created_at);
+          default:
+            return "";
+        }
+      });
+    }
+
+    return filtered;
+  }, [processedLeads, filters, sortConfig, getRegisteredAsValue]);
+
+  const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
+    setIsUpdating(leadId);
+    try {
+      const response = await fetch(`/api/leads/${leadId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating lead status:', error);
+    } finally {      setIsUpdating(null);
+    }
   };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'qualified':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'unqualified':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'trash':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
+  const handleSelectLead = (leadId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLeads([...selectedLeads, leadId]);
+    } else {
+      setSelectedLeads(selectedLeads.filter(id => id !== leadId));
+    }
+  };
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedLeads(filteredAndSortedLeads.map(lead => lead.id));
+    } else {
+      setSelectedLeads([]);
+    }
+  };
+
+  // Bulk action handlers
+  const handleSendEmail = () => {
+    if (selectedLeads.length > 0) {
+      const leadIds = selectedLeads.join(',');
+      // Navigate to email compose page with selected leads
+      // This would be handled by the parent component typically
+      console.log('Send email to leads:', leadIds);
+    }
+  };
+
+  const handleCreateGroup = () => {
+    if (selectedLeads.length > 0) {
+      // Open create group dialog with selected leads
+      // This would be handled by the parent component typically
+      console.log('Create group with leads:', selectedLeads);
+    }
+  };
+
+  const updateBulkStatus = async (newStatus: LeadStatus) => {
+    setIsUpdating('bulk');
+    try {
+      const response = await fetch('/api/leads/bulk-update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ leadIds: selectedLeads, status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update statuses');
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating lead statuses:', error);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+  const toggleExpandLead = (leadId: string) => {
+    setExpandedLeads(prev => 
+      prev.includes(leadId) 
+        ? prev.filter(id => id !== leadId)
+        : [...prev, leadId]
+    );
+  };
+
+  const handleEditLead = (leadId: string) => {
+    const lead = processedLeads.find(l => l.id === leadId);
+    if (lead) {
+      setEditingLead(lead);
+      setIsEditLeadOpen(true);
+    }
+  };
+
+  const handleSaveLead = async (leadId: string, updatedLead: Partial<typeof processedLeads[0]>) => {
+    setIsUpdating(leadId);
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedLead),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update lead");
+      }
+
+      setIsEditLeadOpen(false);
+      setEditingLead(null);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      alert("Failed to update lead");
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
   const renderFormData = (formData: Record<string, string | boolean | number>, formFields?: FormField[]) => {
     if (!formData || Object.keys(formData).length === 0) {
       return <span className="text-muted-foreground text-sm">No additional data</span>;
@@ -305,36 +540,46 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
     );};
 
   return (
-    <Card className="overflow-hidden shadow-sm border border-border/40">
-      <Table>
-        <TableHeader className="bg-accent/50 border-b border-border/40">
-          <TableRow className="border-b border-border/40 hover:bg-transparent">
-            <TableHead className="px-3 py-3 w-10">
-              <Checkbox 
-                checked={selectedLeads.length === processedLeads.length && processedLeads.length > 0}
-                onCheckedChange={handleSelectAll}
-              />
-            </TableHead>            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Name</TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Email</TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Phone</TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Role</TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Status</TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Groups</TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Source</TableHead>
-            <TableHead className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Created</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>          {processedLeads.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={9} className="px-6 py-16 text-center">
-                <div className="text-muted-foreground">
-                  <p className="text-lg font-medium mb-2">No leads found</p>
-                  <p className="text-sm">Create a form to start collecting leads</p>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : (
-            processedLeads.flatMap((lead) => {
+    <div className="space-y-4">
+      {/* Filters */}
+      <LeadsTableFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        availableSources={availableSources}
+        availableGroups={availableGroups}
+        availableTags={availableTags}
+        availableForms={availableForms}
+        totalLeads={processedLeads.length}
+        filteredCount={filteredAndSortedLeads.length}
+      />
+
+      {/* Table */}
+      <Card className="overflow-hidden shadow-sm border border-border/40">
+        <Table>
+          <TableHeader className="bg-accent/50 border-b border-border/40">
+            <LeadsTableHeader
+              selectedLeads={selectedLeads}
+              totalLeads={filteredAndSortedLeads.length}
+              sortConfig={sortConfig}
+              onSort={setSortConfig}
+              onSelectAll={handleSelectAll}
+            />
+          </TableHeader>
+          <TableBody>
+            {filteredAndSortedLeads.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} className="px-6 py-16 text-center">
+                  <div className="text-muted-foreground">
+                    <p className="text-lg font-medium mb-2">No leads found</p>
+                    <p className="text-sm">
+                      {processedLeads.length === 0 
+                        ? "Create a form to start collecting leads"
+                        : "Try adjusting your filters"}
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredAndSortedLeads.flatMap((lead) => {
               const rows = [
                 <TableRow
                   key={lead.id} 
@@ -432,11 +677,31 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                       {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
                     </div>
                   </TableCell>
+                  <TableCell className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditLead(lead.id)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Lead
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Send Email
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ];
-
-              if (expandedLeads.includes(lead.id)) {                rows.push(                  <TableRow key={`${lead.id}-expanded`}>
-                    <TableCell colSpan={9} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
+              if (expandedLeads.includes(lead.id)) {
+                rows.push(
+                  <TableRow key={`${lead.id}-expanded`}>
+                    <TableCell colSpan={10} className="px-6 py-4 bg-accent/20 border-t border-accent/30">
                       <div className="space-y-4">                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Lead Information */}
                           <div className="space-y-3">
@@ -520,11 +785,45 @@ export function LeadsTable({ leads, selectedLeads: externalSelectedLeads, onSele
                     </TableCell>
                   </TableRow>
                 );
-              }              return rows;
-            })
-          )}
+              }
+              return rows;
+            })}
         </TableBody>
       </Table>
+
+      {/* Bulk Actions */}
+      <LeadsTableActions
+        selectedLeads={selectedLeads}
+        isUpdating={isUpdating}
+        onSendEmail={handleSendEmail}
+        onUpdateStatus={updateBulkStatus}
+        onCreateGroup={handleCreateGroup}
+        onExportSelected={() => {
+          // TODO: Implement export functionality
+          console.log('Export selected leads');
+        }}
+        onCopySelected={() => {
+          // TODO: Implement copy functionality
+          const selectedData = filteredAndSortedLeads
+            .filter(lead => selectedLeads.includes(lead.id))
+            .map(lead => `${lead.name}\t${lead.email}\t${lead.phone || ''}`)
+            .join('\n');
+          navigator.clipboard.writeText(selectedData);
+        }}
+      />
     </Card>
+
+    {/* Edit Lead Dialog */}
+    <EditLeadDialog
+      isOpen={isEditLeadOpen}
+      onClose={() => {
+        setIsEditLeadOpen(false);
+        setEditingLead(null);
+      }}
+      lead={editingLead}
+      onSave={handleSaveLead}
+      isUpdating={isUpdating === editingLead?.id}
+    />
+    </div>
   );
 }

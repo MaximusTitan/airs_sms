@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Mail, Users } from "lucide-react";
+import { Mail, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { LeadStatus, FormField } from "@/lib/types/database";
 
@@ -37,11 +37,9 @@ const randomUUID = () => {
 
 interface LeadsHeaderProps {
   selectedLeads?: string[];
-  searchTerm?: string;
-  onSearchChange?: (value: string) => void;
 }
 
-export function LeadsHeader({ selectedLeads = [], searchTerm = "", onSearchChange }: LeadsHeaderProps) {
+export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
   const router = useRouter();
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
@@ -869,17 +867,6 @@ export function LeadsHeader({ selectedLeads = [], searchTerm = "", onSearchChang
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />          <Input
-            placeholder="Search leads..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            className="pl-10 border-border focus:border-primary focus:ring-primary/20"
-          />
-        </div>
       </div>
     </div>
   );
