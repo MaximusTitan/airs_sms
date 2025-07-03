@@ -14,8 +14,16 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmailTemplate } from "@/lib/types/database";
-import { Plus, Edit, Trash2, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Bold, Italic, Link, List, Hash, Code } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface TemplatesPageContentProps {
@@ -28,24 +36,68 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [contentPreview, setContentPreview] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     subject: '',
-    content: ''
+    content: '',
+    category: 'general', // UI only - for better organization
+    priority: 'normal' // UI only - for template prioritization
   });
   const resetForm = () => {
     setFormData({
       name: '',
       subject: '',
-      content: ''
+      content: '',
+      category: 'general',
+      priority: 'normal'
     });
-    setEditingTemplate(null);  };
+    setEditingTemplate(null);
+  };
   const handleContentChange = (content: string) => {
     setFormData(prev => ({ ...prev, content }));
   };
 
   const handleSubjectChange = (subject: string) => {
     setFormData(prev => ({ ...prev, subject }));
+  };
+
+  // Formatting helpers
+  const insertFormatting = (format: string, textarea: HTMLTextAreaElement) => {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    
+    let replacement = '';
+    switch (format) {
+      case 'bold':
+        replacement = `**${selectedText || 'bold text'}**`;
+        break;
+      case 'italic':
+        replacement = `*${selectedText || 'italic text'}*`;
+        break;
+      case 'link':
+        replacement = `[${selectedText || 'link text'}](https://example.com)`;
+        break;
+      case 'list':
+        replacement = selectedText ? selectedText.split('\n').map(line => `• ${line}`).join('\n') : '• List item 1\n• List item 2';
+        break;
+      case 'heading':
+        replacement = `# ${selectedText || 'Heading'}`;
+        break;
+      case 'code':
+        replacement = `\`${selectedText || 'code'}\``;
+        break;
+    }
+    
+    const newContent = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+    setFormData(prev => ({ ...prev, content: newContent }));
+    
+    // Focus back and set cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + replacement.length, start + replacement.length);
+    }, 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,7 +150,9 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
     setFormData({
       name: template.name,
       subject: template.subject,
-      content: template.content
+      content: template.content,
+      category: 'general', // Default since not in database yet
+      priority: 'normal' // Default since not in database yet
     });
     setEditingTemplate(template);
     setIsCreateDialogOpen(true);
@@ -163,50 +217,203 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
               Create Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTemplate ? 'Edit Template' : 'Create New Template'}
               </DialogTitle>
             </DialogHeader>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Template Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter template name"
-                  required
-                />
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Template Name</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter template name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="category">Category</Label>
+                  <Select 
+                    value={formData.category} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="welcome">Welcome</SelectItem>
+                      <SelectItem value="follow-up">Follow-up</SelectItem>
+                      <SelectItem value="newsletter">Newsletter</SelectItem>
+                      <SelectItem value="promotion">Promotion</SelectItem>
+                      <SelectItem value="notification">Notification</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
-              <div>
-                <Label htmlFor="subject">Subject</Label>
-                <Input
-                  id="subject"
-                  value={formData.subject}
-                  onChange={(e) => handleSubjectChange(e.target.value)}
-                  placeholder="Email subject"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <Label htmlFor="subject">Subject</Label>
+                  <Input
+                    id="subject"
+                    value={formData.subject}
+                    onChange={(e) => handleSubjectChange(e.target.value)}
+                    placeholder="Email subject"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="priority">Priority</Label>
+                  <Select 
+                    value={formData.priority} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
+              {/* Content Editor with Formatting Tools */}
               <div>
-                <Label htmlFor="content">Content</Label>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Email content..."
-                  rows={12}
-                  required                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Write your email template content here
-                </p>              </div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="content">Content</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Preview:</span>
+                    <Checkbox 
+                      checked={contentPreview} 
+                      onCheckedChange={(checked) => setContentPreview(checked === true)}
+                    />
+                  </div>
+                </div>
+                
+                {/* Formatting Toolbar */}
+                <div className="border rounded-t-md p-2 bg-muted/50 flex flex-wrap gap-1 mb-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const textarea = document.getElementById('content') as HTMLTextAreaElement;
+                      insertFormatting('bold', textarea);
+                    }}
+                  >
+                    <Bold className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const textarea = document.getElementById('content') as HTMLTextAreaElement;
+                      insertFormatting('italic', textarea);
+                    }}
+                  >
+                    <Italic className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const textarea = document.getElementById('content') as HTMLTextAreaElement;
+                      insertFormatting('link', textarea);
+                    }}
+                  >
+                    <Link className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const textarea = document.getElementById('content') as HTMLTextAreaElement;
+                      insertFormatting('list', textarea);
+                    }}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const textarea = document.getElementById('content') as HTMLTextAreaElement;
+                      insertFormatting('heading', textarea);
+                    }}
+                  >
+                    <Hash className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const textarea = document.getElementById('content') as HTMLTextAreaElement;
+                      insertFormatting('code', textarea);
+                    }}
+                  >
+                    <Code className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {contentPreview ? (
+                  <div className="border border-t-0 rounded-b-md p-4 min-h-[300px] bg-white">
+                    <div className="prose prose-sm max-w-none">
+                      {formData.content.split('\n').map((line, i) => (
+                        <p key={i} className="mb-2">
+                          <span dangerouslySetInnerHTML={{ 
+                            __html: line
+                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                              .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-blue-600 underline">$1</a>')
+                              .replace(/^# (.*)/g, '<h1 class="text-xl font-bold">$1</h1>')
+                              .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
+                          }} />
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Textarea
+                    id="content"
+                    value={formData.content}
+                    onChange={(e) => handleContentChange(e.target.value)}
+                    placeholder="Email content... Use the formatting buttons above or type Markdown-style formatting"
+                    rows={16}
+                    className="border-t-0 rounded-t-none"
+                    required
+                  />
+                )}
+                
+                <p className="text-sm text-muted-foreground mt-2">
+                  {contentPreview ? (
+                    'Preview mode - Toggle off to edit'
+                  ) : (
+                    <>
+                      Use formatting buttons or Markdown syntax. 
+                      Character count: {formData.content.length}
+                    </>
+                  )}
+                </p>
+              </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button 
                   type="button" 
                   variant="outline" 
@@ -215,7 +422,7 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Saving...' : (editingTemplate ? 'Update' : 'Create')}
+                  {isSubmitting ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
                 </Button>
               </div>
             </form>
@@ -241,7 +448,14 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
             <Card key={template.id} className="p-6 hover:shadow-lg transition-shadow">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold text-lg mb-1">{template.name}</h3>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold text-lg">{template.name}</h3>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        General
+                      </span>
+                    </div>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Created {formatDistanceToNow(new Date(template.created_at))} ago
                   </p>
@@ -249,7 +463,8 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
                 
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Subject:</p>
-                  <p className="text-sm bg-muted p-2 rounded">{template.subject}</p>                </div>
+                  <p className="text-sm bg-muted p-2 rounded line-clamp-2">{template.subject}</p>
+                </div>
 
                 <div className="flex gap-2">
                   <Button 
@@ -264,6 +479,7 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
                     size="sm" 
                     variant="outline"
                     onClick={() => handleEdit(template)}
+                    title="Edit template"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -273,6 +489,7 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
                     variant="outline"
                     onClick={() => handleDelete(template.id)}
                     className="text-destructive hover:text-destructive"
+                    title="Delete template"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
