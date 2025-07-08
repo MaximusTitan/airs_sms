@@ -95,12 +95,12 @@ export async function getEmailAnalytics(
 ): Promise<EmailAnalytics> {
   const supabase = await createClient();
   
-  // Base query for email events
+  // Base query for email events - use proper datetime ranges
   let eventsQuery = supabase
     .from('email_events')
     .select('event_type, created_at')
-    .gte('created_at', startDate)
-    .lte('created_at', endDate);
+    .gte('created_at', startDate + 'T00:00:00Z')
+    .lte('created_at', endDate + 'T23:59:59Z');
   
   // If userId is provided, filter by user's emails
   if (userId) {
@@ -192,12 +192,12 @@ export async function getDailyEmailMetrics(
 ): Promise<EmailMetricsByDate[]> {
   const supabase = await createClient();
   
-  // Base query for email events
+  // Base query for email events - use proper datetime ranges
   let eventsQuery = supabase
     .from('email_events')
     .select('event_type, created_at')
-    .gte('created_at', startDate)
-    .lte('created_at', endDate);
+    .gte('created_at', startDate + 'T00:00:00Z')
+    .lte('created_at', endDate + 'T23:59:59Z');
   
   // If userId is provided, filter by user's emails
   if (userId) {
