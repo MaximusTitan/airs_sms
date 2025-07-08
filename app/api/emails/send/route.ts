@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 import { v4 as uuidv4 } from 'uuid';
+import { recordEmailEvent, trackEmailMetrics } from '@/lib/webhook-utils';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -490,6 +491,37 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error('Database error:', dbError);
+    } else {
+      // Manually record email events for analytics (fallback for webhook events)
+      const currentTime = new Date().toISOString();
+      
+      try {
+        // Record events for successful sends
+        for (const result of sendResults) {
+          if (result.id) {
+            // Record "sent" event
+            await recordEmailEvent({
+              email_id: result.id,
+              event_type: 'sent',
+              created_at: currentTime,
+              data: {
+                email_id: result.id,
+                to: validEmails,
+                subject: subject,
+                created_at: currentTime
+              }
+            });
+            
+            // Track metrics
+            await trackEmailMetrics('sent');
+          }
+        }
+        
+        console.log(`Recorded ${sendResults.length} email events for analytics`);
+      } catch (eventError) {
+        console.error('Error recording email events:', eventError);
+        // Don't fail the email send if event recording fails
+      }
     }
 
     // Return appropriate response

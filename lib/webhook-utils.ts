@@ -194,20 +194,41 @@ export async function trackEmailMetrics(
   // Update daily metrics
   const today = new Date().toISOString().split('T')[0];
   
-  const { error } = await supabase
+  // First try to increment existing record
+  const { data: existingMetric } = await supabase
     .from('email_metrics')
-    .upsert({
-      date: today,
-      event_type: eventType,
-      count: 1
-    }, {
-      onConflict: 'date,event_type',
-      ignoreDuplicates: false
-    });
+    .select('count')
+    .eq('date', today)
+    .eq('event_type', eventType)
+    .single();
     
-  if (error) {
-    console.error('Error tracking email metrics:', error);
-    // Don't throw here as this is non-critical
+  if (existingMetric) {
+    // Update existing record
+    const { error } = await supabase
+      .from('email_metrics')
+      .update({ 
+        count: existingMetric.count + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('date', today)
+      .eq('event_type', eventType);
+      
+    if (error) {
+      console.error('Error updating email metrics:', error);
+    }
+  } else {
+    // Insert new record
+    const { error } = await supabase
+      .from('email_metrics')
+      .insert({
+        date: today,
+        event_type: eventType,
+        count: 1
+      });
+      
+    if (error) {
+      console.error('Error inserting email metrics:', error);
+    }
   }
 }
 
