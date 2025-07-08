@@ -2,8 +2,9 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, BarChart3, Users, Target, RefreshCw } from "lucide-react";
+import { Mail, BarChart3, Users, Target, RefreshCw, Plus, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface EmailsHeaderProps {
   totalEmails: number;
@@ -50,6 +51,23 @@ export function EmailsHeader({
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/emails/compose">
+              <Button size="sm" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Compose Email
+              </Button>
+            </Link>
+            <Link href="/dashboard/emails/templates">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Templates
+              </Button>
+            </Link>
+          </div>
+          
+          {/* Refresh Button */}
           {onRefresh && (
             <Button
               variant="outline"
@@ -62,6 +80,8 @@ export function EmailsHeader({
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
           )}
+          
+          {/* Stats Badges */}
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="flex items-center gap-1">
               <Mail className="h-3 w-3" />

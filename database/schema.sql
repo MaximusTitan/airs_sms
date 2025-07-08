@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS emails (
     recipient_emails TEXT[] NOT NULL DEFAULT '{}',
     lead_ids UUID[] DEFAULT '{}',
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    resend_id TEXT
+    resend_id TEXT,
+    personalized BOOLEAN DEFAULT FALSE
 );
 
 -- Create indexes for better performance
@@ -83,6 +84,9 @@ CREATE INDEX IF NOT EXISTS idx_leads_user_id ON leads(user_id);
 CREATE INDEX IF NOT EXISTS idx_leads_form_id ON leads(form_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at);
+CREATE INDEX IF NOT EXISTS idx_emails_user_id ON emails(user_id);
+CREATE INDEX IF NOT EXISTS idx_emails_status ON emails(status);
+CREATE INDEX IF NOT EXISTS idx_emails_personalized ON emails(personalized);
 CREATE INDEX IF NOT EXISTS idx_lead_groups_user_id ON lead_groups(user_id);
 CREATE INDEX IF NOT EXISTS idx_group_memberships_group_id ON group_memberships(group_id);
 CREATE INDEX IF NOT EXISTS idx_group_memberships_lead_id ON group_memberships(lead_id);
