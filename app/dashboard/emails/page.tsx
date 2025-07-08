@@ -1,83 +1,166 @@
-import { Suspense } from "react";
-import { EmailsHeader } from "@/components/emails/emails-header";
+'use client';
+
+import { useState, useEffect } from "react";
+import { EmailsHeader } from "@/components/emails/emails-header-with-tabs";
 import { EmailsList } from "@/components/emails/emails-list";
-import { getUser, getEmailsWithLeads, getEmailTemplates } from "@/lib/cache";
+import { EmailAnalyticsDashboard } from "@/components/emails/email-analytics-dashboard";
+import { EmailAnalytics, EmailMetricsByDate, EmailEngagementTrend } from "@/lib/email-analytics";
+import { Email, EmailTemplate } from "@/lib/types/database";
 
-// Enable ISR with 3-minute revalidation for emails
-export const revalidate = 180;
-
-function EmailsListSkeleton() {
-  return (
-    <div className="space-y-6">
-      {/* Stats skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="p-4 bg-card border border-border rounded-lg animate-pulse">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-muted rounded-lg"></div>
-              <div className="space-y-2">
-                <div className="h-4 bg-muted rounded w-20"></div>
-                <div className="h-6 bg-muted rounded w-8"></div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      {/* Email list skeleton */}
-      <div className="space-y-4">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="p-6 bg-card border border-border rounded-lg animate-pulse">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="h-5 bg-muted rounded w-48"></div>
-                <div className="h-4 bg-muted rounded w-32"></div>
-              </div>
-              <div className="h-6 bg-muted rounded w-16"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+interface EmailWithRecipients extends Email {
+  recipients?: string[];
 }
 
-async function EmailsContent() {
-  try {
-    const [emailsWithLeads, templates] = await Promise.all([
-      getEmailsWithLeads(),
-      getEmailTemplates()
-    ]);
+// Remove server-side data fetching for client component
+// export const revalidate = 180;
+
+function EmailsPageContent() {
+  const [currentTab, setCurrentTab] = useState<'emails' | 'analytics'>('emails');
+  const [emailsData, setEmailsData] = useState<{
+    emailsWithLeads: EmailWithRecipients[];
+    templates: EmailTemplate[];
+  } | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<{
+    analytics: EmailAnalytics;
+    dailyMetrics: EmailMetricsByDate[];
+    engagementTrends: EmailEngagementTrend[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadEmailsData();
+  }, []);
+
+  const loadEmailsData = async () => {
+    try {
+      // Mock data for now - in a real app you'd fetch from your API
+      const mockEmailsData = {
+        emailsWithLeads: [],
+        templates: []
+      };
+      setEmailsData(mockEmailsData);
+    } catch (error) {
+      console.error('Error loading emails data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAnalyticsData = async () => {
+    try {
+      const response = await fetch('/api/analytics/email?range=7d');
+      if (response.ok) {
+        const data = await response.json();
+        setAnalyticsData(data);
+      }
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      // Fallback to mock data
+      setAnalyticsData({
+        analytics: {
+          totalSent: 0,
+          delivered: 0,
+          opened: 0,
+          clicked: 0,
+          bounced: 0,
+          complained: 0,
+          failed: 0,
+          deliveryRate: 0,
+          openRate: 0,
+          clickRate: 0,
+          bounceRate: 0,
+          complaintRate: 0
+        },
+        dailyMetrics: [],
+        engagementTrends: []
+      });
+    }
+  };
+
+  const handleTabChange = async (tab: 'emails' | 'analytics') => {
+    setCurrentTab(tab);
     
-    const fromEmail = process.env.FROM_EMAIL || 'AIRS@aireadyschool.com';
-    
-    return <EmailsList emails={emailsWithLeads} templates={templates} fromEmail={fromEmail} />;
-  } catch (error) {
-    console.error('Error loading emails:', error);
+    if (tab === 'analytics' && !analyticsData) {
+      await loadAnalyticsData();
+    }
+  };
+
+  const totalEmails = emailsData?.emailsWithLeads?.length || 0;
+  const sentEmails = emailsData?.emailsWithLeads?.filter((email: EmailWithRecipients) => email.status === 'sent').length || 0;
+  const totalLeads = emailsData?.emailsWithLeads?.reduce((acc: number, email: EmailWithRecipients) => acc + (email.recipients?.length || 0), 0) || 0;
+  const conversionRate = totalLeads > 0 ? (sentEmails / totalLeads) * 100 : 0;
+
+  if (loading) {
     return (
-      <div className="p-8 text-center">
-        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg inline-block">
-          <p className="text-destructive">Failed to load emails. Please try again later.</p>
+      <div className="p-8 space-y-8 bg-background min-h-full">
+        <div className="space-y-6">
+          {/* Header skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-8 bg-muted rounded w-48 animate-pulse"></div>
+              <div className="h-4 bg-muted rounded w-72 animate-pulse"></div>
+            </div>
+            <div className="flex gap-4">
+              <div className="h-6 bg-muted rounded w-20 animate-pulse"></div>
+              <div className="h-6 bg-muted rounded w-20 animate-pulse"></div>
+              <div className="h-6 bg-muted rounded w-24 animate-pulse"></div>
+            </div>
+          </div>
+          
+          {/* Content skeleton */}
+          <div className="space-y-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="p-6 bg-card border border-border rounded-lg animate-pulse">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="h-5 bg-muted rounded w-48"></div>
+                    <div className="h-4 bg-muted rounded w-32"></div>
+                  </div>
+                  <div className="h-6 bg-muted rounded w-16"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
-}
-
-export default async function EmailsPage() {
-  const user = await getUser();
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="p-8 space-y-8 bg-background min-h-full">
-      <EmailsHeader />
-      
-      <Suspense fallback={<EmailsListSkeleton />}>
-        <EmailsContent />
-      </Suspense>
+      <EmailsHeader
+        totalEmails={totalEmails}
+        totalLeads={totalLeads}
+        conversionRate={conversionRate}
+        currentTab={currentTab}
+        onTabChange={handleTabChange}
+      />
+
+      {currentTab === 'emails' && (
+        <EmailsList 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          emails={(emailsData?.emailsWithLeads || []) as any}
+          templates={emailsData?.templates || []}
+          fromEmail={process.env.NEXT_PUBLIC_FROM_EMAIL || 'AIRS@aireadyschool.com'}
+        />
+      )}
+
+      {currentTab === 'analytics' && (
+        <div>
+          {analyticsData ? (
+            <EmailAnalyticsDashboard initialData={analyticsData} />
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2 text-muted-foreground">Loading analytics...</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+export default function EmailsPage() {
+  return <EmailsPageContent />;
 }

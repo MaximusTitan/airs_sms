@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/tests
+__tests__/
+*.test.*
+*.spec.*
 
 # next.js
 /.next/
@@ -33,6 +37,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*.local
 .env
+.env.production
 
 # vercel
 .vercel
@@ -40,3 +45,33 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# Documentation and temporary files
+*.md.bak
+*.backup
+*_backup.*
+docs/
+documentation/
+BUILD_*.md
+SETUP_*.md
+IMPLEMENTATION_*.md
+WEBHOOK_*.md
+EMAIL_*.md
+
+# Database backups
+database/*backup*
+database/schema_backup.*
+
+# Temporary files
+*.tmp
+*.temp
