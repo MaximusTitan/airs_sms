@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Lead, LeadStatus, FormField } from "@/lib/types/database";
-import { formatDistanceToNow } from "date-fns";
+import { safeFormatDistanceToNow } from "@/lib/utils/date-utils";
 import {
   MoreHorizontal,
   Trash2,
@@ -281,9 +281,7 @@ export function GroupMemberRow({
       </TableCell>
       <TableCell className="px-6 py-4">
         <div className="text-sm text-muted-foreground">
-          {formatDistanceToNow(new Date(member.created_at), {
-            addSuffix: true,
-          })}
+          {safeFormatDistanceToNow(member.created_at, { addSuffix: true })}
         </div>
       </TableCell>
       <TableCell className="px-6 py-4 text-right">

@@ -49,7 +49,7 @@ import { GroupTableFilters, FilterOptions } from "./group-table-filters";
 import { sortData, SortConfig, TableSortHeader } from "./table-sort-header";
 import { GroupMemberRow } from "./group-member-row";
 import { LeadDetailsRow } from "./lead-details-row";
-import { EditLeadDialog } from "./edit-lead-dialog";
+import { EditLeadDialog } from "../leads/edit-lead-dialog";
 import { Pagination } from "@/components/ui/pagination";
 
 interface LeadWithForm extends Lead {

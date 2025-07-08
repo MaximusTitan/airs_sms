@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LeadGroup, Lead } from "@/lib/types/database";
-import { formatDistanceToNow } from "date-fns";
+import { safeFormatDistanceToNow } from "@/lib/utils/date-utils";
 import { 
   MoreHorizontal, 
   Edit, 
@@ -349,7 +349,7 @@ export function GroupsGrid({ groups, selectedGroups: externalSelectedGroups, onS
                 <CardFooter className="pt-0">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    {formatDistanceToNow(new Date(group.created_at), { addSuffix: true })}
+                    {safeFormatDistanceToNow(group.created_at, { addSuffix: true })}
                   </div>
                 </CardFooter>
               </Card>

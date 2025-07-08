@@ -12,7 +12,7 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { Email, EmailTemplate, Lead } from "@/lib/types/database";
-import { formatDistanceToNow, format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils/date-utils";
 import { 
   Mail, 
   Users, 
@@ -241,9 +241,8 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
                                 </span>
                                 <span>
                                   {email.sent_at 
-                                    ? `Sent ${formatDistanceToNow(new Date(email.sent_at), { addSuffix: true })}`
-                                    : `Created ${formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}`
-                                  }
+                                    ? safeFormatDate(email.sent_at, 'PPpp')
+                                    : safeFormatDate(email.created_at, 'PPpp')}
                                 </span>
                               </div>
                             </div>
@@ -289,7 +288,7 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
                                 {email.sent_at ? 'Sent:' : 'Created:'}
                               </span>
                               <span className="ml-2">
-                                {format(new Date(email.sent_at || email.created_at), 'PPpp')}
+                                {safeFormatDate(email.sent_at || email.created_at)}
                               </span>
                             </div>
                           </div>

@@ -4,7 +4,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Lead, FormField } from "@/lib/types/database";
-import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils/date-utils";
 
 interface LeadWithForm extends Lead {
   forms?: {
@@ -100,7 +100,7 @@ export function LeadDetailsRow({
                     Lead Created:
                   </span>
                   <div className="text-sm text-muted-foreground ml-2">
-                    {format(new Date(member.leads.created_at), "PPpp")}
+                    {safeFormatDate(member.leads.created_at)}
                   </div>
                 </div>
                 <div>
@@ -108,7 +108,7 @@ export function LeadDetailsRow({
                     Last Updated:
                   </span>
                   <div className="text-sm text-muted-foreground ml-2">
-                    {format(new Date(member.leads.updated_at), "PPpp")}
+                    {safeFormatDate(member.leads.updated_at)}
                   </div>
                 </div>
                 <div>
@@ -116,7 +116,7 @@ export function LeadDetailsRow({
                     Added to Group:
                   </span>
                   <div className="text-sm text-muted-foreground ml-2">
-                    {format(new Date(member.created_at), "PPpp")}
+                    {safeFormatDate(member.created_at)}
                   </div>
                 </div>
               </div>

@@ -22,6 +22,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'urjcavadwlpthjfeuvtk.storage.supabase.co',
+        port: '',
+        pathname: '/v1/object/public/**',
+      },
     ],
     // Enable modern image formats
     formats: ['image/webp', 'image/avif'],

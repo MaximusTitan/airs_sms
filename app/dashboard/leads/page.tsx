@@ -3,8 +3,8 @@ import { LeadsPageContent } from "@/components/leads/leads-page-content";
 import { getUser, getLeadsWithGroups } from "@/lib/cache";
 import { redirect } from "next/navigation";
 
-// Enable ISR with 2-minute revalidation for leads data
-export const revalidate = 120;
+// Reduce revalidation time for better performance with new API optimizations
+export const revalidate = 60;
 
 function LeadsPageSkeleton() {
   return (
@@ -38,6 +38,7 @@ function LeadsPageSkeleton() {
 
 async function LeadsContent() {
   try {
+    // Uses the optimized cache implementation that calls the optimized API
     const leadsWithGroups = await getLeadsWithGroups();
     return <LeadsPageContent leads={leadsWithGroups} />;
   } catch (error) {

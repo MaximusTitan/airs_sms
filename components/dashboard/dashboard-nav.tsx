@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   LayoutDashboard, 
   Users, 
@@ -95,9 +96,15 @@ export function DashboardNav() {
     )}>
       <div className="flex items-center justify-between h-16 px-4 border-b border-border">
         {!isCollapsed && (
-          <h1 className="text-2xl font-bold text-rose-600">
-            Sales CRM
-          </h1>
+          <div className="flex items-center">
+            <Image
+              src="https://urjcavadwlpthjfeuvtk.storage.supabase.co/v1/object/public/logo//airs-logo-new-1.avif"
+              alt="AIRS Logo"
+              width={120}
+              height={40}
+              className="object-contain"
+            />
+          </div>
         )}
         <Button
           onClick={toggleCollapsed}

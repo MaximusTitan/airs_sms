@@ -36,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Lead, LeadStatus, FormField } from "@/lib/types/database";
-import { formatDistanceToNow, format } from "date-fns";
+import { safeFormatDate, safeFormatDistanceToNow } from "@/lib/utils/date-utils";
 import {
   ChevronDown,
   ChevronRight,
@@ -404,7 +404,12 @@ export function LeadsTable({
           case "groups":
             return lead.groups.length > 0 ? lead.groups[0].name : "";
           case "created_at":
-            return new Date(lead.created_at);
+            try {
+              const date = new Date(lead.created_at);
+              return isNaN(date.getTime()) ? new Date(0) : date;
+            } catch {
+              return new Date(0);
+            }
           default:
             return "";
         }
@@ -818,6 +823,241 @@ export function LeadsTable({
     );
   };
 
+  // Memoized lead row component for better performance
+  const LeadRowMemo = React.memo<{
+    lead: Lead & {
+      forms?: { name: string; fields: FormField[] };
+      group_memberships?: { lead_groups: { id: string; name: string } }[];
+      groups: { id: string; name: string }[];
+    };
+    isSelected: boolean;
+    isExpanded: boolean;
+    isUpdating: boolean;
+    onToggleExpand: (id: string) => void;
+    onSelectLead: (id: string, checked: boolean) => void;
+    onUpdateStatus: (id: string, status: LeadStatus) => void;
+    onEditLead: (leadId: string) => void;
+    onEditNotes: (leadId: string) => void;
+    getRegisteredAsValue: (lead: (typeof processedLeads)[0]) => string | null;
+    getStatusColor: (status: LeadStatus) => string;
+  }>(
+    ({
+      lead,
+      isSelected,
+      isExpanded,
+      isUpdating,
+      onToggleExpand,
+      onSelectLead,
+      onUpdateStatus,
+      onEditLead,
+      onEditNotes,
+      getRegisteredAsValue,
+      getStatusColor,
+    }) => {
+      return (
+        <>
+          <TableRow
+            key={lead.id}
+            className="hover:bg-accent/30 transition-colors border-b border-border/40 cursor-pointer"
+            onClick={() => onToggleExpand(lead.id)}
+          >
+            <TableCell
+              className="px-3 py-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) =>
+                  onSelectLead(lead.id, checked as boolean)
+                }
+              />
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div className="flex items-center gap-2">
+                {isExpanded ? (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                )}
+                <div
+                  className="text-sm font-medium text-foreground truncate max-w-[150px]"
+                  title={lead.name}
+                >
+                  {lead.name}
+                </div>
+              </div>
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div
+                className="text-sm text-muted-foreground truncate max-w-[200px]"
+                title={lead.email}
+              >
+                {lead.email && lead.email !== "-" ? (
+                  lead.email
+                ) : (
+                  <span className="text-xs italic">No email</span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div className="text-sm text-muted-foreground">
+                {lead.phone && lead.phone !== "-" ? (
+                  lead.phone
+                ) : (
+                  <span className="text-xs italic">No phone</span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div className="text-sm text-muted-foreground">
+                {getRegisteredAsValue(lead) || (
+                  <span className="text-xs italic">N/A</span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell
+              className="px-3 py-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Select
+                value={lead.status}
+                onValueChange={(value) =>
+                  onUpdateStatus(lead.id, value as LeadStatus)
+                }
+                disabled={isUpdating}
+              >
+                <SelectTrigger className="w-28 h-8 text-xs">
+                  <SelectValue>
+                    <Badge
+                      className={`text-xs ${getStatusColor(lead.status)}`}
+                    >
+                      {lead.status === "new_lead"
+                        ? "New Lead"
+                        : lead.status === "pilot_ready"
+                          ? "Pilot Ready"
+                          : lead.status === "running_pilot"
+                            ? "Running Pilot"
+                            : lead.status === "pilot_done"
+                              ? "Pilot Done"
+                              : lead.status === "sale_done"
+                                ? "Sale Done"
+                                : lead.status === "not_interested"
+                                  ? "Not Interested"
+                                  : lead.status}
+                    </Badge>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new_lead">New Lead</SelectItem>
+                  <SelectItem value="qualified">Qualified</SelectItem>
+                  <SelectItem value="pilot_ready">Pilot Ready</SelectItem>
+                  <SelectItem value="running_pilot">Running Pilot</SelectItem>
+                  <SelectItem value="pilot_done">Pilot Done</SelectItem>
+                  <SelectItem value="sale_done">Sale Done</SelectItem>
+                  <SelectItem value="implementation">Implementation</SelectItem>
+                  <SelectItem value="not_interested">Not Interested</SelectItem>
+                  <SelectItem value="unqualified">Unqualified</SelectItem>
+                  <SelectItem value="trash">Trash</SelectItem>
+                </SelectContent>
+              </Select>
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div className="text-sm text-muted-foreground">
+                {lead.forms?.name || lead.source || (
+                  <span className="text-xs italic">Unknown</span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div className="flex flex-wrap gap-1">
+                {lead.groups && lead.groups.length > 0 ? (
+                  lead.groups.map((group, index) => (
+                    <Badge key={`${lead.id}-${index}`} variant="outline" className="text-xs">
+                      {group.name}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs italic text-muted-foreground">
+                    No groups
+                  </span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div className="text-xs text-muted-foreground">
+                {(() => {
+                  return safeFormatDistanceToNow(lead.created_at, { addSuffix: true });
+                })()}
+              </div>
+            </TableCell>
+            <TableCell className="px-3 py-3">
+              <div className="flex flex-wrap gap-1 max-w-[100px]">
+                {lead.tags && lead.tags.length > 0 ? (
+                  lead.tags.slice(0, 2).map((tag, index) => (
+                    <Badge key={`${lead.id}-tag-${index}`} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs italic text-muted-foreground">
+                    No tags
+                  </span>
+                )}
+                {lead.tags && lead.tags.length > 2 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{lead.tags.length - 2}
+                  </Badge>
+                )}
+              </div>
+            </TableCell>
+            <TableCell
+              className="px-3 py-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-8 w-8 p-0 hover:bg-accent"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => onEditLead(lead.id)}
+                    className="cursor-pointer"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Lead
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onEditNotes(lead.id)}
+                    className="cursor-pointer"
+                  >
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    Edit Notes
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      window.open(`mailto:${lead.email}`, "_blank")
+                    }
+                    className="cursor-pointer"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Email
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        </>
+      );
+    },
+  );
+
+  LeadRowMemo.displayName = "LeadRowMemo";
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -861,258 +1101,20 @@ export function LeadsTable({
             ) : (
               paginatedLeads.flatMap((lead) => {
                 const rows = [
-                  <TableRow
+                  <LeadRowMemo
                     key={lead.id}
-                    className="hover:bg-accent/30 transition-colors border-b border-border/40 cursor-pointer"
-                    onClick={() => toggleExpandLead(lead.id)}
-                  >
-                    <TableCell
-                      className="px-3 py-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        checked={selectedLeads.includes(lead.id)}
-                        onCheckedChange={(checked) =>
-                          handleSelectLead(lead.id, checked as boolean)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="px-3 py-3">
-                      <div className="flex items-center gap-2">
-                        {expandedLeads.includes(lead.id) ? (
-                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                        )}
-                        <div
-                          className="text-sm font-medium text-foreground truncate max-w-[150px]"
-                          title={lead.name}
-                        >
-                          {lead.name}
-                        </div>
-                      </div>
-                    </TableCell>{" "}
-                    <TableCell className="px-3 py-3">
-                      <div
-                        className="text-sm text-muted-foreground truncate max-w-[200px]"
-                        title={lead.email}
-                      >
-                        {lead.email && lead.email !== "-" ? (
-                          lead.email
-                        ) : (
-                          <span className="text-xs italic">No email</span>
-                        )}
-                      </div>
-                    </TableCell>{" "}
-                    <TableCell className="px-3 py-3">
-                      <div className="text-sm text-muted-foreground">
-                        {lead.phone && lead.phone !== "-" ? (
-                          lead.phone
-                        ) : (
-                          <span className="text-xs italic">No phone</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-3 py-3">
-                      <div className="text-sm text-muted-foreground">
-                        {getRegisteredAsValue(lead) || (
-                          <span className="text-xs italic">N/A</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className="px-3 py-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Select
-                        value={lead.status}
-                        onValueChange={(value) =>
-                          updateLeadStatus(lead.id, value as LeadStatus)
-                        }
-                        disabled={isUpdating === lead.id}
-                      >
-                        <SelectTrigger className="w-28 h-8 text-xs">
-                          <SelectValue>
-                            <Badge
-                              className={`text-xs ${getStatusColor(lead.status)}`}
-                            >
-                              {lead.status === "new_lead"
-                                ? "New Lead"
-                                : lead.status === "pilot_ready"
-                                  ? "Pilot Ready"
-                                  : lead.status === "running_pilot"
-                                    ? "Running Pilot"
-                                    : lead.status === "pilot_done"
-                                      ? "Pilot Done"
-                                      : lead.status === "sale_done"
-                                        ? "Sale Done"
-                                        : lead.status === "not_interested"
-                                          ? "Not Interested"
-                                          : lead.status
-                                              .charAt(0)
-                                              .toUpperCase() +
-                                            lead.status.slice(1)}
-                            </Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new_lead">
-                            <Badge
-                              className={`text-xs ${getStatusColor("new_lead")}`}
-                            >
-                              New Lead
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="qualified">
-                            <Badge
-                              className={`text-xs ${getStatusColor("qualified")}`}
-                            >
-                              Qualified
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="pilot_ready">
-                            <Badge
-                              className={`text-xs ${getStatusColor("pilot_ready")}`}
-                            >
-                              Pilot Ready
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="running_pilot">
-                            <Badge
-                              className={`text-xs ${getStatusColor("running_pilot")}`}
-                            >
-                              Running Pilot
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="pilot_done">
-                            <Badge
-                              className={`text-xs ${getStatusColor("pilot_done")}`}
-                            >
-                              Pilot Done
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="sale_done">
-                            <Badge
-                              className={`text-xs ${getStatusColor("sale_done")}`}
-                            >
-                              Sale Done
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="implementation">
-                            <Badge
-                              className={`text-xs ${getStatusColor("implementation")}`}
-                            >
-                              Implementation
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="not_interested">
-                            <Badge
-                              className={`text-xs ${getStatusColor("not_interested")}`}
-                            >
-                              Not Interested
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="unqualified">
-                            <Badge
-                              className={`text-xs ${getStatusColor("unqualified")}`}
-                            >
-                              Unqualified
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="trash">
-                            <Badge
-                              className={`text-xs ${getStatusColor("trash")}`}
-                            >
-                              Trash
-                            </Badge>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {lead.groups && lead.groups.length > 0 ? (
-                          lead.groups.map((group) => (
-                            <Badge
-                              key={group.id}
-                              variant="secondary"
-                              className="text-xs px-2 py-0.5"
-                              title={group.name}
-                            >
-                              {group.name}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">
-                            No groups
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-3 py-3">
-                      <div
-                        className="text-sm text-muted-foreground truncate max-w-[100px]"
-                        title={lead.forms?.name || lead.source || "Direct"}
-                      >
-                        {lead.forms?.name || lead.source || "Direct"}
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className="px-3 py-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div
-                        className="flex items-center gap-2 cursor-pointer hover:bg-accent/20 rounded p-1 -m-1 transition-colors group"
-                        onClick={() => handleNotesEdit(lead.id)}
-                        title="Click to edit notes"
-                      >
-                        <div className="text-sm text-muted-foreground truncate max-w-[120px]">
-                          {lead.notes ? (
-                            <span className="line-clamp-2">{lead.notes}</span>
-                          ) : (
-                            <span className="text-xs italic">
-                              Click to add notes
-                            </span>
-                          )}
-                        </div>
-                        <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-3 py-3">
-                      <div
-                        className="text-xs text-muted-foreground"
-                        title={format(new Date(lead.created_at), "PPpp")}
-                      >
-                        {formatDistanceToNow(new Date(lead.created_at), {
-                          addSuffix: true,
-                        })}
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className="px-3 py-3 text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleEditLead(lead.id)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Lead
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Mail className="mr-2 h-4 w-4" />
-                            Send Email
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>,
+                    lead={lead}
+                    isSelected={selectedLeads.includes(lead.id)}
+                    isExpanded={expandedLeads.includes(lead.id)}
+                    isUpdating={isUpdating === lead.id}
+                    onToggleExpand={toggleExpandLead}
+                    onSelectLead={handleSelectLead}
+                    onUpdateStatus={updateLeadStatus}
+                    onEditLead={handleEditLead}
+                    onEditNotes={handleNotesEdit}
+                    getRegisteredAsValue={getRegisteredAsValue}
+                    getStatusColor={getStatusColor}
+                  />,
                 ];
                 if (expandedLeads.includes(lead.id)) {
                   rows.push(
@@ -1207,19 +1209,25 @@ export function LeadsTable({
                                     Created:
                                   </span>
                                   <div className="text-muted-foreground text-xs mt-1">
-                                    {format(
-                                      new Date(lead.created_at),
-                                      "MMM dd, yyyy HH:mm",
-                                    )}
-                                    <br />
-                                    <span className="italic">
-                                      (
-                                      {formatDistanceToNow(
-                                        new Date(lead.created_at),
-                                        { addSuffix: true },
-                                      )}
-                                      )
-                                    </span>
+                                    {(() => {
+                                      try {
+                                        const date = new Date(lead.created_at);
+                                        if (isNaN(date.getTime())) {
+                                          return "Invalid date";
+                                        }
+                                        return (
+                                          <>
+                                            {safeFormatDate(date, "MMM dd, yyyy HH:mm")}
+                                            <br />
+                                            <span className="italic">
+                                              ({safeFormatDistanceToNow(date, { addSuffix: true })})
+                                            </span>
+                                          </>
+                                        );
+                                      } catch {
+                                        return "Invalid date";
+                                      }
+                                    })()}
                                   </div>
                                 </div>
                                 <div>
@@ -1227,19 +1235,25 @@ export function LeadsTable({
                                     Last Updated:
                                   </span>
                                   <div className="text-muted-foreground text-xs mt-1">
-                                    {format(
-                                      new Date(lead.updated_at),
-                                      "MMM dd, yyyy HH:mm",
-                                    )}
-                                    <br />
-                                    <span className="italic">
-                                      (
-                                      {formatDistanceToNow(
-                                        new Date(lead.updated_at),
-                                        { addSuffix: true },
-                                      )}
-                                      )
-                                    </span>
+                                    {(() => {
+                                      try {
+                                        const date = new Date(lead.updated_at);
+                                        if (isNaN(date.getTime())) {
+                                          return "Invalid date";
+                                        }
+                                        return (
+                                          <>
+                                            {safeFormatDate(date, "MMM dd, yyyy HH:mm")}
+                                            <br />
+                                            <span className="italic">
+                                              ({safeFormatDistanceToNow(date, { addSuffix: true })})
+                                            </span>
+                                          </>
+                                        );
+                                      } catch {
+                                        return "Invalid date";
+                                      }
+                                    })()}
                                   </div>
                                 </div>
                               </div>

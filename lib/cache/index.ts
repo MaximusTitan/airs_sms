@@ -20,6 +20,7 @@ export const getUser = cache(async () => {
 export const getLeads = cache(async () => {
   const supabase = await createClient();
   
+  // Optimized query with better performance - limit to 100 most recent leads
   const { data: leads, error } = await supabase
     .from('leads')
     .select(`
@@ -29,7 +30,8 @@ export const getLeads = cache(async () => {
         fields
       )
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(100); // Limit initial load to improve performance
     
   if (error) {
     throw new Error(`Failed to fetch leads: ${error.message}`);
@@ -40,29 +42,34 @@ export const getLeads = cache(async () => {
 
 export const getLeadsWithGroups = cache(async () => {
   const supabase = await createClient();
-  const leads = await getLeads();
   
-  if (!leads.length) return leads;
-  
-  const { data: memberships, error } = await supabase
-    .from('group_memberships')
+  // Optimized single query approach - fetch leads with groups in one go
+  const { data: leadsWithGroups, error } = await supabase
+    .from('leads')
     .select(`
-      lead_id,
-      lead_groups (
-        id,
-        name
+      *,
+      forms (
+        name,
+        fields
+      ),
+      group_memberships (
+        lead_groups (
+          id,
+          name
+        )
       )
     `)
-    .in('lead_id', leads.map(lead => lead.id));
+    .order('created_at', { ascending: false })
+    .limit(100); // Limit initial load to improve performance
     
   if (error) {
-    throw new Error(`Failed to fetch group memberships: ${error.message}`);
+    throw new Error(`Failed to fetch leads with groups: ${error.message}`);
   }
   
-  // Attach group information to leads
-  return leads.map(lead => ({
+  // Transform the data to the expected format
+  return (leadsWithGroups || []).map(lead => ({
     ...lead,
-    groups: memberships?.filter(m => m.lead_id === lead.id) || []
+    groups: lead.group_memberships?.map((membership: { lead_groups: { id: string; name: string } }) => membership.lead_groups) || []
   }));
 });
 

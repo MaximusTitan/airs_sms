@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Lead } from "@/lib/types/database";
-import { formatDistanceToNow } from "date-fns";
+import { safeFormatDistanceToNow } from "@/lib/utils/date-utils";
 import Link from "next/link";
 
 interface RecentLeadsProps {
@@ -60,7 +60,7 @@ export function RecentLeads({ leads }: RecentLeadsProps) {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
+                  {safeFormatDistanceToNow(lead.created_at, { addSuffix: true })}
                 </p>
               </div>
               <Badge className={`${getStatusColor(lead.status)} border`}>

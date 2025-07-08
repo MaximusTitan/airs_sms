@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/lib/types/database";
-import { formatDistanceToNow } from "date-fns";
+import { safeFormatDistanceToNow } from "@/lib/utils/date-utils";
 import { Eye, Edit, Copy, MoreHorizontal, ExternalLink, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -140,7 +140,7 @@ export function FormsGrid({ forms }: FormsGridProps) {
               </div>
               
               <div className="text-xs text-muted-foreground">
-                Created {formatDistanceToNow(new Date(form.created_at), { addSuffix: true })}
+                {`Created ${safeFormatDistanceToNow(form.created_at, { addSuffix: true })}`}
               </div>
               
               <div className="flex gap-2 pt-2">

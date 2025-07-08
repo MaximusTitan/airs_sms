@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { LeadStatus, FormField } from "@/lib/types/database";
-import { formatDistanceToNow, format } from "date-fns";
+import { safeFormatDate, safeFormatDistanceToNow } from "@/lib/utils/date-utils";
 import {
   MoreHorizontal,
   ChevronDown,
@@ -536,7 +536,7 @@ export function GroupTableRow({
         </TableCell>
         <TableCell className="px-6 py-4">
           <div className="text-sm text-muted-foreground">
-            {formatDistanceToNow(new Date(member.created_at))} ago
+            {`${safeFormatDistanceToNow(member.created_at)} ago`}
           </div>
         </TableCell>
         <TableCell className="px-6 py-4 text-right">
@@ -597,13 +597,13 @@ export function GroupTableRow({
                   <div>
                     <span className="font-medium text-foreground">Created:</span>
                     <span className="ml-2 text-muted-foreground">
-                      {format(new Date(lead.created_at), "MMM dd, yyyy 'at' h:mm a")}
+                      {safeFormatDate(lead.created_at, "MMM dd, yyyy 'at' h:mm a")}
                     </span>
                   </div>
                   <div>
                     <span className="font-medium text-foreground">Last Updated:</span>
                     <span className="ml-2 text-muted-foreground">
-                      {format(new Date(lead.updated_at), "MMM dd, yyyy 'at' h:mm a")}
+                      {safeFormatDate(lead.updated_at, "MMM dd, yyyy 'at' h:mm a")}
                     </span>
                   </div>
                   <div>

@@ -457,7 +457,14 @@ export function TemplatesPageContent({ templates }: TemplatesPageContentProps) {
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Created {formatDistanceToNow(new Date(template.created_at))} ago
+                    {(() => {
+                      try {
+                        const date = new Date(template.created_at);
+                        return isNaN(date.getTime()) ? "Invalid date" : `Created ${formatDistanceToNow(date)} ago`;
+                      } catch {
+                        return "Invalid date";
+                      }
+                    })()}
                   </p>
                 </div>
                 
