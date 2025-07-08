@@ -41,7 +41,7 @@ export async function PATCH(
       );
     }
 
-    // Update the group - no user restriction
+    // Update the group - NO USER FILTERING
     const { data: updatedGroup, error: updateError } = await supabase
       .from("lead_groups")
       .update(updateData)
@@ -87,7 +87,7 @@ export async function DELETE(
 
     const { id: groupId } = await params;
 
-    // Check if the group exists - no user restriction (DELETE method)
+    // Check if the group exists - NO USER FILTERING
     const { data: group, error: groupError } = await supabase
       .from("lead_groups")
       .select("id")
@@ -115,7 +115,7 @@ export async function DELETE(
       );
     }
 
-    // Delete the group - no user restriction
+    // Delete the group - NO USER FILTERING
     const { error: deleteError } = await supabase
       .from("lead_groups")
       .delete()

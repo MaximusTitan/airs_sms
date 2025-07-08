@@ -1,200 +1,225 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+create table public.email_events (
+  id uuid not null default gen_random_uuid (),
+  email_id text not null,
+  event_type text not null,
+  created_at timestamp with time zone not null,
+  data jsonb null,
+  processed_at timestamp with time zone null default now(),
+  constraint email_events_pkey primary key (id),
+  constraint email_events_email_id_event_type_created_at_key unique (email_id, event_type, created_at)
+) TABLESPACE pg_default;
 
--- Create forms table
-CREATE TABLE IF NOT EXISTS forms (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    name TEXT NOT NULL,
-    description TEXT,
-    fields JSONB NOT NULL DEFAULT '[]',
-    is_active BOOLEAN DEFAULT true,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
-);
+create index IF not exists idx_email_events_email_id on public.email_events using btree (email_id) TABLESPACE pg_default;
 
--- Create leads table
-CREATE TABLE IF NOT EXISTS leads (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    phone TEXT,
-    source TEXT,
-    status TEXT NOT NULL DEFAULT 'new_lead' CHECK (status IN ('new_lead', 'qualified', 'pilot_ready', 'running_pilot', 'pilot_done', 'sale_done', 'implementation', 'not_interested', 'unqualified', 'trash')),
-    form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
-    notes TEXT,
-    tags TEXT[] DEFAULT '{}',
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    form_data JSONB DEFAULT '{}'
-);
+create index IF not exists idx_email_events_type on public.email_events using btree (event_type) TABLESPACE pg_default;
 
--- Create email_templates table
-CREATE TABLE IF NOT EXISTS email_templates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    name TEXT NOT NULL,
-    subject TEXT NOT NULL,
-    content TEXT NOT NULL,
-    variables TEXT[] DEFAULT '{}',
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
-);
+create index IF not exists idx_email_events_created_at on public.email_events using btree (created_at) TABLESPACE pg_default;
 
--- Create lead_groups table
-CREATE TABLE IF NOT EXISTS lead_groups (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    name TEXT NOT NULL,
-    description TEXT,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
-);
+create table public.email_metrics (
+  id uuid not null default gen_random_uuid (),
+  date date not null,
+  event_type text not null,
+  count integer null default 1,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint email_metrics_pkey primary key (id),
+  constraint email_metrics_date_event_type_key unique (date, event_type)
+) TABLESPACE pg_default;
 
--- Create group_memberships table
-CREATE TABLE IF NOT EXISTS group_memberships (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    group_id UUID NOT NULL REFERENCES lead_groups(id) ON DELETE CASCADE,
-    lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-    UNIQUE(group_id, lead_id)
-);
+create index IF not exists idx_email_metrics_date on public.email_metrics using btree (date) TABLESPACE pg_default;
 
--- Create emails table
-CREATE TABLE IF NOT EXISTS emails (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    subject TEXT NOT NULL,
-    content TEXT NOT NULL,
-    template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
-    sent_at TIMESTAMP WITH TIME ZONE,
-    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sending', 'sent', 'failed', 'partially_sent')),
-    recipient_emails TEXT[] NOT NULL DEFAULT '{}',
-    lead_ids UUID[] DEFAULT '{}',
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    resend_id TEXT,
-    personalized BOOLEAN DEFAULT FALSE
-);
+create index IF not exists idx_email_metrics_type on public.email_metrics using btree (event_type) TABLESPACE pg_default;
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_forms_user_id ON forms(user_id);
-CREATE INDEX IF NOT EXISTS idx_forms_active ON forms(is_active);
-CREATE INDEX IF NOT EXISTS idx_leads_user_id ON leads(user_id);
-CREATE INDEX IF NOT EXISTS idx_leads_form_id ON leads(form_id);
-CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
-CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at);
-CREATE INDEX IF NOT EXISTS idx_emails_user_id ON emails(user_id);
-CREATE INDEX IF NOT EXISTS idx_emails_status ON emails(status);
-CREATE INDEX IF NOT EXISTS idx_emails_personalized ON emails(personalized);
-CREATE INDEX IF NOT EXISTS idx_lead_groups_user_id ON lead_groups(user_id);
-CREATE INDEX IF NOT EXISTS idx_group_memberships_group_id ON group_memberships(group_id);
-CREATE INDEX IF NOT EXISTS idx_group_memberships_lead_id ON group_memberships(lead_id);
-CREATE INDEX IF NOT EXISTS idx_email_templates_user_id ON email_templates(user_id);
-CREATE INDEX IF NOT EXISTS idx_emails_user_id ON emails(user_id);
-CREATE INDEX IF NOT EXISTS idx_emails_status ON emails(status);
-CREATE INDEX IF NOT EXISTS idx_emails_created_at ON emails(created_at);
+create table public.email_templates (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  name text not null,
+  subject text not null,
+  content text not null,
+  variables text[] null default '{}'::text[],
+  user_id uuid not null,
+  constraint email_templates_pkey primary key (id),
+  constraint email_templates_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete CASCADE
+) TABLESPACE pg_default;
 
--- Create RLS (Row Level Security) policies - Updated to allow all authenticated users to access all data
-ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lead_groups ENABLE ROW LEVEL SECURITY;
-ALTER TABLE group_memberships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE emails ENABLE ROW LEVEL SECURITY;
+create index IF not exists idx_email_templates_user_id on public.email_templates using btree (user_id) TABLESPACE pg_default;
 
--- Forms policies - Allow all authenticated users to access all forms
-CREATE POLICY "Authenticated users can view all forms" ON forms
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+create trigger update_email_templates_updated_at BEFORE
+update on email_templates for EACH row
+execute FUNCTION update_updated_at_column ();
 
-CREATE POLICY "Authenticated users can create forms" ON forms
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+create table public.emails (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  subject text not null,
+  content text not null,
+  template_id uuid null,
+  sent_at timestamp with time zone null,
+  status text not null default 'draft'::text,
+  recipient_emails text[] not null default '{}'::text[],
+  lead_ids uuid[] null default '{}'::uuid[],
+  user_id uuid not null,
+  resend_id text null,
+  delivered_at timestamp with time zone null,
+  bounced_at timestamp with time zone null,
+  complained_at timestamp with time zone null,
+  failed_at timestamp with time zone null,
+  bounce_type text null,
+  complaint_type text null,
+  failure_reason text null,
+  personalized boolean null default false,
+  constraint emails_pkey primary key (id),
+  constraint emails_template_id_fkey foreign KEY (template_id) references email_templates (id) on delete set null,
+  constraint emails_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete CASCADE,
+  constraint emails_status_check check (
+    (
+      status = any (
+        array[
+          'draft'::text,
+          'sending'::text,
+          'sent'::text,
+          'failed'::text,
+          'partially_sent'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can update all forms" ON forms
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_emails_resend_id on public.emails using btree (resend_id) TABLESPACE pg_default
+where
+  (resend_id is not null);
 
-CREATE POLICY "Authenticated users can delete all forms" ON forms
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_emails_personalized on public.emails using btree (personalized) TABLESPACE pg_default;
 
--- Leads policies - Allow all authenticated users to access all leads
-CREATE POLICY "Authenticated users can view all leads" ON leads
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_emails_user_id on public.emails using btree (user_id) TABLESPACE pg_default;
 
-CREATE POLICY "Anyone can create leads" ON leads
-    FOR INSERT WITH CHECK (true);
+create index IF not exists idx_emails_status on public.emails using btree (status) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can update all leads" ON leads
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_emails_created_at on public.emails using btree (created_at) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can delete all leads" ON leads
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+create table public.forms (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  name text not null,
+  description text null,
+  fields jsonb not null default '[]'::jsonb,
+  is_active boolean null default true,
+  user_id uuid not null,
+  constraint forms_pkey primary key (id),
+  constraint forms_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete CASCADE
+) TABLESPACE pg_default;
 
--- Lead groups policies - Allow all authenticated users to access all groups
-CREATE POLICY "Authenticated users can view all lead groups" ON lead_groups
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_forms_user_id on public.forms using btree (user_id) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can create lead groups" ON lead_groups
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+create index IF not exists idx_forms_active on public.forms using btree (is_active) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can update all lead groups" ON lead_groups
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+create trigger update_forms_updated_at BEFORE
+update on forms for EACH row
+execute FUNCTION update_updated_at_column ();
 
-CREATE POLICY "Authenticated users can delete all lead groups" ON lead_groups
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+create table public.group_memberships (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  group_id uuid not null,
+  lead_id uuid not null,
+  constraint group_memberships_pkey primary key (id),
+  constraint group_memberships_group_id_lead_id_key unique (group_id, lead_id),
+  constraint group_memberships_group_id_fkey foreign KEY (group_id) references lead_groups (id) on delete CASCADE,
+  constraint group_memberships_lead_id_fkey foreign KEY (lead_id) references leads (id) on delete CASCADE
+) TABLESPACE pg_default;
 
--- Group memberships policies - Allow all authenticated users to access all memberships
-CREATE POLICY "Authenticated users can view all group memberships" ON group_memberships
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_group_memberships_group_id on public.group_memberships using btree (group_id) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can create group memberships" ON group_memberships
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+create index IF not exists idx_group_memberships_lead_id on public.group_memberships using btree (lead_id) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can delete all group memberships" ON group_memberships
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+create table public.lead_groups (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  name text not null,
+  description text null,
+  user_id uuid not null,
+  constraint lead_groups_pkey primary key (id),
+  constraint lead_groups_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete CASCADE
+) TABLESPACE pg_default;
 
--- Email templates policies - Allow all authenticated users to access all templates
-CREATE POLICY "Authenticated users can view all email templates" ON email_templates
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_lead_groups_user_id on public.lead_groups using btree (user_id) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can create email templates" ON email_templates
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+create trigger update_lead_groups_updated_at BEFORE
+update on lead_groups for EACH row
+execute FUNCTION update_updated_at_column ();
 
-CREATE POLICY "Authenticated users can update all email templates" ON email_templates
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+create table public.leads (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  name text not null,
+  email text null,
+  phone text null,
+  source text null,
+  status text not null default 'new_lead'::text,
+  form_id uuid not null,
+  notes text null,
+  tags text[] null default '{}'::text[],
+  user_id uuid not null,
+  form_data jsonb null default '{}'::jsonb,
+  engagement_score integer null default 0,
+  last_engagement_at timestamp with time zone null,
+  email_valid boolean null default true,
+  unsubscribed boolean null default false,
+  unsubscribed_at timestamp with time zone null,
+  unsubscribe_reason text null,
+  constraint leads_pkey primary key (id),
+  constraint leads_form_id_fkey foreign KEY (form_id) references forms (id) on delete CASCADE,
+  constraint leads_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete CASCADE,
+  constraint leads_status_check check (
+    (
+      status = any (
+        array[
+          'new_lead'::text,
+          'qualified'::text,
+          'pilot_ready'::text,
+          'running_pilot'::text,
+          'pilot_done'::text,
+          'sale_done'::text,
+          'implementation'::text,
+          'not_interested'::text,
+          'unqualified'::text,
+          'trash'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can delete all email templates" ON email_templates
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_leads_user_id on public.leads using btree (user_id) TABLESPACE pg_default;
 
--- Emails policies - Allow all authenticated users to access all emails
-CREATE POLICY "Authenticated users can view all emails" ON emails
-    FOR SELECT USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_leads_form_id on public.leads using btree (form_id) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can create emails" ON emails
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+create index IF not exists idx_leads_status on public.leads using btree (status) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can update all emails" ON emails
-    FOR UPDATE USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_leads_created_at on public.leads using btree (created_at) TABLESPACE pg_default;
 
-CREATE POLICY "Authenticated users can delete all emails" ON emails
-    FOR DELETE USING (auth.uid() IS NOT NULL);
+create index IF not exists idx_leads_engagement_score on public.leads using btree (engagement_score) TABLESPACE pg_default;
 
--- Create triggers for updated_at
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
+create index IF not exists idx_leads_email_valid on public.leads using btree (email_valid) TABLESPACE pg_default;
 
-CREATE TRIGGER update_forms_updated_at BEFORE UPDATE ON forms
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+create index IF not exists idx_leads_unsubscribed on public.leads using btree (unsubscribed) TABLESPACE pg_default;
 
-CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON leads
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+create trigger update_leads_updated_at BEFORE
+update on leads for EACH row
+execute FUNCTION update_updated_at_column ();
 
-CREATE TRIGGER update_lead_groups_updated_at BEFORE UPDATE ON lead_groups
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+create table public.unsubscribes (
+  id uuid not null default gen_random_uuid (),
+  email text not null,
+  reason text null,
+  created_at timestamp with time zone null default now(),
+  constraint unsubscribes_pkey primary key (id),
+  constraint unsubscribes_email_key unique (email)
+) TABLESPACE pg_default;
 
-CREATE TRIGGER update_email_templates_updated_at BEFORE UPDATE ON email_templates
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+create index IF not exists idx_unsubscribes_email on public.unsubscribes using btree (email) TABLESPACE pg_default;

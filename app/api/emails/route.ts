@@ -23,14 +23,13 @@ export async function GET(request: NextRequest) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
-    // Build the query
+    // Build the query - NO USER FILTERING
     let query = supabase
       .from('emails')
       .select(`
         *,
         template:email_templates(id, name, subject, content)
       `)
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     // Add status filter if provided
@@ -69,11 +68,10 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Get total count for pagination
+    // Get total count for pagination - NO USER FILTERING
     const { count, error: countError } = await supabase
       .from('emails')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .select('*', { count: 'exact', head: true });
 
     if (countError) {
       console.error('Error counting emails:', countError);

@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch all email templates - no user filtering
+    // Fetch all email templates - NO USER FILTERING
     const { data: templates, error } = await supabase
       .from('email_templates')
       .select('*')

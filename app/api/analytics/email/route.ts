@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    // Fetch all analytics data in parallel
+    // Fetch all analytics data in parallel - NO USER FILTERING
     const [analytics, dailyMetrics, engagementTrends] = await Promise.all([
-      getEmailAnalytics(startDateStr, endDateStr, user.id),
+      getEmailAnalytics(startDateStr, endDateStr), // No user.id passed
       getDailyEmailMetrics(startDateStr, endDateStr),
       getEmailEngagementTrends(startDateStr, endDateStr)
     ]);

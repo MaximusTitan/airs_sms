@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
-    // Build the base query with all necessary joins
+    // Build the base query with all necessary joins - NO USER FILTERING
     let query = supabase
       .from('leads')
       .select(`
@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Use body data as provided - NO USER ID ENFORCEMENT
     const { data: lead, error } = await supabase
       .from('leads')
       .insert(body)

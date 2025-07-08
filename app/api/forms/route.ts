@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch all forms for all users - no user filtering
+    // Fetch all forms - NO USER FILTERING
     const { data: forms, error } = await supabase
       .from('forms')
       .select('id, name, fields')

@@ -73,6 +73,9 @@ async function handleWebhookEvent(payload: WebhookPayload): Promise<void> {
     case 'email.complained':
       await handleEmailComplained(data as EmailEventData);
       break;
+    case 'email.unsubscribed':
+      await handleEmailUnsubscribed(data as EmailEventData);
+      break;
     
     default:
       console.warn(`Unhandled webhook event type: ${type}`);
@@ -353,6 +356,38 @@ async function handleEmailComplained(data: EmailEventData): Promise<void> {
   
   // TODO: Review email content and sending practices
   // await triggerContentReview(data.email_id);
+}
+
+/**
+ * Handle email.unsubscribed event
+ * Triggered when a recipient unsubscribes from emails
+ */
+async function handleEmailUnsubscribed(data: EmailEventData): Promise<void> {
+  console.log(`Email unsubscribed: ${data.email_id} by ${data.to.join(', ')}`);
+  
+  try {
+    // Record the event for analytics
+    await recordEmailEvent({
+      email_id: data.email_id,
+      event_type: 'unsubscribed',
+      created_at: data.created_at,
+      data: data
+    });
+    
+    // Unsubscribe each recipient
+    for (const email of data.to) {
+      await unsubscribeUser(email, 'user_unsubscribed');
+    }
+    
+    // Track metrics
+    await trackEmailMetrics('unsubscribed');
+    
+  } catch (error) {
+    console.error('Error handling email.unsubscribed event:', error);
+  }
+  
+  // TODO: Send confirmation email to user
+  // TODO: Add to suppression list for future campaigns
 }
 
 /**

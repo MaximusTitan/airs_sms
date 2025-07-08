@@ -57,12 +57,11 @@ export async function PATCH(
       updateData.form_data = form_data;
     }
 
-    // Update the lead
+    // Update the lead - NO USER FILTERING
     const { data, error } = await supabase
       .from('leads')
       .update(updateData)
       .eq('id', resolvedParams.id)
-      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -108,7 +107,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch the lead - no user filtering
+    // Fetch the lead - NO USER FILTERING
     const { data: lead, error } = await supabase
       .from('leads')
       .select(`

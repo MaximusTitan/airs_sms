@@ -230,7 +230,8 @@ export function EmailAnalyticsDashboard({ initialData }: EmailAnalyticsDashboard
               clicked: analytics.clicked,
               bounced: analytics.bounced,
               failed: analytics.failed,
-              complained: analytics.complained
+              complained: analytics.complained,
+              unsubscribed: analytics.unsubscribed
             }} 
           />
         </Card>

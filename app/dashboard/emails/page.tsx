@@ -86,11 +86,13 @@ function EmailsPageContent() {
           bounced: 0,
           complained: 0,
           failed: 0,
+          unsubscribed: 0,
           deliveryRate: 0,
           openRate: 0,
           clickRate: 0,
           bounceRate: 0,
-          complaintRate: 0
+          complaintRate: 0,
+          unsubscribeRate: 0
         },
         dailyMetrics: [],
         engagementTrends: []

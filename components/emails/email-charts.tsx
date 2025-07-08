@@ -101,6 +101,10 @@ const statusChartConfig = {
     label: "Complained",
     color: "hsl(var(--chart-6))",
   },
+  unsubscribed: {
+    label: "Unsubscribed",
+    color: "hsl(var(--chart-7))",
+  },
 } satisfies ChartConfig;
 
 export function EmailVolumeChart({ data }: EmailVolumeChartProps) {
@@ -297,6 +301,7 @@ interface EmailStatusPieChartProps {
     bounced: number;
     failed: number;
     complained: number;
+    unsubscribed: number;
   };
 }
 
@@ -308,6 +313,7 @@ export function EmailStatusPieChart({ data }: EmailStatusPieChartProps) {
     { name: 'bounced', value: data.bounced, fill: 'var(--color-bounced)' },
     { name: 'failed', value: data.failed, fill: 'var(--color-failed)' },
     { name: 'complained', value: data.complained, fill: 'var(--color-complained)' },
+    { name: 'unsubscribed', value: data.unsubscribed, fill: 'var(--color-unsubscribed)' },
   ].filter(item => item.value > 0);
 
   // Handle empty data

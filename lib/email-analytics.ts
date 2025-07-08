@@ -12,11 +12,13 @@ export interface EmailAnalytics {
   bounced: number;
   complained: number;
   failed: number;
+  unsubscribed: number;
   deliveryRate: number;
   openRate: number;
   clickRate: number;
   bounceRate: number;
   complaintRate: number;
+  unsubscribeRate: number;
 }
 
 export interface EmailMetricsByDate {
@@ -28,6 +30,7 @@ export interface EmailMetricsByDate {
   bounced: number;
   complained: number;
   failed: number;
+  unsubscribed: number;
 }
 
 export interface EmailEngagementTrend {
@@ -120,11 +123,13 @@ export async function getEmailAnalytics(
         bounced: 0,
         complained: 0,
         failed: 0,
+        unsubscribed: 0,
         deliveryRate: 0,
         openRate: 0,
         clickRate: 0,
         bounceRate: 0,
-        complaintRate: 0
+        complaintRate: 0,
+        unsubscribeRate: 0
       };
     }
   }
@@ -149,6 +154,7 @@ export async function getEmailAnalytics(
   const bounced = eventCounts['bounced'] || 0;
   const complained = eventCounts['complained'] || 0;
   const failed = eventCounts['failed'] || 0;
+  const unsubscribed = eventCounts['unsubscribed'] || 0;
   
   // Calculate rates
   const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
@@ -156,6 +162,7 @@ export async function getEmailAnalytics(
   const clickRate = opened > 0 ? (clicked / opened) * 100 : 0;
   const bounceRate = totalSent > 0 ? (bounced / totalSent) * 100 : 0;
   const complaintRate = totalSent > 0 ? (complained / totalSent) * 100 : 0;
+  const unsubscribeRate = totalSent > 0 ? (unsubscribed / totalSent) * 100 : 0;
   
   return {
     totalSent,
@@ -165,11 +172,13 @@ export async function getEmailAnalytics(
     bounced,
     complained,
     failed,
+    unsubscribed,
     deliveryRate,
     openRate,
     clickRate,
     bounceRate,
-    complaintRate
+    complaintRate,
+    unsubscribeRate
   };
 }
 
@@ -178,28 +187,45 @@ export async function getEmailAnalytics(
  */
 export async function getDailyEmailMetrics(
   startDate: string,
-  endDate: string
+  endDate: string,
+  userId?: string
 ): Promise<EmailMetricsByDate[]> {
   const supabase = await createClient();
   
-  // Query daily metrics from email_metrics table
-  const metricsQuery = supabase
-    .from('email_metrics')
-    .select('date, event_type, count')
-    .gte('date', startDate)
-    .lte('date', endDate)
-    .order('date');
+  // Base query for email events
+  let eventsQuery = supabase
+    .from('email_events')
+    .select('event_type, created_at')
+    .gte('created_at', startDate)
+    .lte('created_at', endDate);
   
-  const { data: metrics, error } = await metricsQuery;
+  // If userId is provided, filter by user's emails
+  if (userId) {
+    const { data: userEmails } = await supabase
+      .from('emails')
+      .select('resend_id')
+      .eq('user_id', userId)
+      .not('resend_id', 'is', null);
+    
+    const emailIds = userEmails?.map(email => email.resend_id) || [];
+    if (emailIds.length > 0) {
+      eventsQuery = eventsQuery.in('email_id', emailIds);
+    } else {
+      // No emails found for user, return empty results
+      return [];
+    }
+  }
+  
+  const { data: events, error } = await eventsQuery;
   
   if (error) {
     console.error('Error fetching daily metrics:', error);
     throw error;
   }
   
-  // Group metrics by date
-  const metricsByDate = metrics?.reduce((acc, metric) => {
-    const date = metric.date;
+  // Group events by date and type
+  const eventsByDate = events?.reduce((acc, event) => {
+    const date = event.created_at.split('T')[0];
     if (!acc[date]) {
       acc[date] = {
         date,
@@ -209,34 +235,43 @@ export async function getDailyEmailMetrics(
         clicked: 0,
         bounced: 0,
         complained: 0,
-        failed: 0
+        failed: 0,
+        unsubscribed: 0
       };
     }
     
-    acc[date][metric.event_type as keyof Omit<EmailMetricsByDate, 'date'>] = metric.count;
+    switch (event.event_type) {
+      case 'sent':
+        acc[date].sent++;
+        break;
+      case 'delivered':
+        acc[date].delivered++;
+        break;
+      case 'opened':
+        acc[date].opened++;
+        break;
+      case 'clicked':
+        acc[date].clicked++;
+        break;
+      case 'bounced':
+        acc[date].bounced++;
+        break;
+      case 'complained':
+        acc[date].complained++;
+        break;
+      case 'failed':
+        acc[date].failed++;
+        break;
+      case 'unsubscribed':
+        acc[date].unsubscribed++;
+        break;
+    }
+    
     return acc;
   }, {} as Record<string, EmailMetricsByDate>) || {};
   
-  return Object.values(metricsByDate).sort((a, b) => 
-    new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-}
-
-/**
- * Get engagement trends over time
- */
-export async function getEngagementTrends(
-  startDate: string,
-  endDate: string
-): Promise<EmailEngagementTrend[]> {
-  const dailyMetrics = await getDailyEmailMetrics(startDate, endDate);
-  
-  return dailyMetrics.map(metric => ({
-    date: metric.date,
-    openRate: metric.delivered > 0 ? (metric.opened / metric.delivered) * 100 : 0,
-    clickRate: metric.opened > 0 ? (metric.clicked / metric.opened) * 100 : 0,
-    bounceRate: metric.sent > 0 ? (metric.bounced / metric.sent) * 100 : 0
-  }));
+  // Convert to array and sort by date
+  return Object.values(eventsByDate).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
@@ -244,10 +279,11 @@ export async function getEngagementTrends(
  */
 export async function getEmailEngagementTrends(
   startDate: string,
-  endDate: string
+  endDate: string,
+  userId?: string
 ): Promise<EmailEngagementTrend[]> {
   // Get daily metrics and calculate engagement rates
-  const dailyMetrics = await getDailyEmailMetrics(startDate, endDate);
+  const dailyMetrics = await getDailyEmailMetrics(startDate, endDate, userId);
   
   return dailyMetrics.map(metric => ({
     date: metric.date,

@@ -92,7 +92,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch groups with lead count - no user filtering
+    // Fetch all groups with lead count - NO USER FILTERING
     const { data: groups, error } = await supabase
       .from("lead_groups")
       .select(`
