@@ -23,8 +23,11 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
   const router = useRouter();
     const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
-  const [selectedLeads, setSelectedLeads] = useState<string[]>(preSelectedLeads);  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [showPreview, setShowPreview] = useState(false);  const [isSending, setIsSending] = useState(false);
+  const [selectedLeads, setSelectedLeads] = useState<string[]>(preSelectedLeads);  
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [showPreview, setShowPreview] = useState(false);  
+  const [isSending, setIsSending] = useState(false);
+  const [personalized, setPersonalized] = useState(false);
   const [sendMessage, setSendMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Handle pre-selected template
@@ -96,6 +99,7 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
           recipientEmails,
           leadIds: selectedLeads,
           templateId: selectedTemplate || null,
+          personalized,
         }),
       });      const result = await response.json();
 
@@ -112,7 +116,7 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
       } else {
         setSendMessage({ 
           type: 'success', 
-          text: result.message || `Email sent successfully to ${result.successfulSends || result.totalRecipients || recipientEmails.length} recipient${recipientEmails.length !== 1 ? 's' : ''}!${result.batches ? ` (Sent in ${result.batches} batch${result.batches !== 1 ? 'es' : ''})` : ''}` 
+          text: result.message || `${personalized ? 'Personalized email' : 'Email'} sent successfully to ${result.successfulSends || result.totalRecipients || recipientEmails.length} recipient${recipientEmails.length !== 1 ? 's' : ''}!${result.batches ? ` (Sent in ${result.batches} batch${result.batches !== 1 ? 'es' : ''})` : ''}` 
         });
         
         // Only redirect on full success
@@ -214,26 +218,38 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
         {/* Email Composition - Takes most space */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Compose Email</h2>
-            
-            <div className="space-y-4">
+            <h2 className="text-lg font-semibold mb-4">Compose Email</h2>              <div className="space-y-4">
               <div>
-                <Label htmlFor="subject">Subject</Label>
+                <div className="flex justify-between items-center mb-1">
+                  <Label htmlFor="subject">Subject</Label>
+                  {personalized && (
+                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      Personalized
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="subject"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Enter email subject"
+                  placeholder={personalized ? "Enter subject with {{name}} placeholder" : "Enter email subject"}
                   className="text-base"
                 />
               </div>
               <div>
-                <Label htmlFor="content">Message</Label>
+                <div className="flex justify-between items-center mb-1">
+                  <Label htmlFor="content">Message</Label>
+                  {personalized && (
+                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      Personalized
+                    </span>
+                  )}
+                </div>
                 <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Enter your message here..."
+                  placeholder={personalized ? "Enter your message here... Use {{name}} to personalize" : "Enter your message here..."}
                   rows={16}
                   className="text-base resize-none"
                 />                <div className="flex items-center justify-between mt-2">
@@ -260,6 +276,39 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
                           {content || "No content"}
                         </div>
                       </div>
+                      
+                      {personalized && selectedLeads.length > 0 && (
+                        <div>
+                          <div className="p-3 mt-3 bg-blue-50 border border-blue-200 rounded-md text-xs">
+                            <p className="font-medium text-blue-700 mb-1">Personalized Preview</p>
+                            <p className="mb-2 text-blue-600">
+                              Each recipient will receive their own personalized email. Example for first recipient:
+                            </p>
+                            
+                            {leads.filter(l => selectedLeads.includes(l.id)).slice(0, 1).map(lead => (
+                              <div key={lead.id} className="p-2 bg-white border border-blue-100 rounded">
+                                <p><strong>To:</strong> {lead.name} &lt;{lead.email}&gt;</p>
+                                <p><strong>Subject:</strong> {subject.replace(/{{name}}/gi, lead.name)}</p>
+                                <div className="mt-1 p-2 bg-white border-t border-blue-100">
+                                  <div className="whitespace-pre-wrap text-xs">
+                                    {content.replace(/{{name}}/gi, lead.name)}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            <strong>Note:</strong> When personalization is enabled, each recipient gets an individual email with their name inserted in place of &#123;&#123;name&#125;&#125; placeholders.
+                          </p>
+                        </div>
+                      )}
+                      
+                      {!personalized && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          <strong>Note:</strong> All recipients will receive the exact same email content.
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -356,6 +405,33 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
               </div>
             )}
             
+            {/* Personalization option */}
+            <div className="flex items-center mb-4 p-3 border rounded-md bg-blue-50/30 border-blue-100">
+              <Checkbox 
+                id="personalize" 
+                checked={personalized}
+                onCheckedChange={(checked) => setPersonalized(!!checked)}
+                className="mr-3"
+              />
+              <div>
+                <Label htmlFor="personalize" className="font-medium text-sm flex items-center gap-1">
+                  Personalize Emails
+                  <Badge variant="outline" className="ml-1 bg-blue-100 text-blue-800 border-blue-200">
+                    Recommended
+                  </Badge>
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use &#123;&#123;name&#125;&#125; in subject or content to insert each recipient&apos;s name
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Personalized emails are sent individually to each recipient for better engagement
+                </p>
+                <p className="text-xs text-blue-800 mt-1 font-medium">
+                  Note: You can use placeholders like &#123;&#123;name&#125;&#125; in your email even without checking this box
+                </p>
+              </div>
+            </div>
+            
             <Button 
               onClick={handleSend}
               disabled={isSending || !subject.trim() || !content.trim() || selectedLeads.length === 0}
@@ -363,11 +439,19 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
               size="lg"
             >
               <Send className="h-4 w-4 mr-2" />
-              {isSending ? 'Sending...' : 'Send Email'}
+              {isSending ? 'Sending...' : `Send ${personalized ? 'Personalized' : ''} Email${selectedLeads.length !== 1 ? 's' : ''}`}
             </Button>
               <div className="mt-3 text-xs text-muted-foreground space-y-1">
               <p><span className="font-medium">Subject:</span> {subject || 'No subject'}</p>
               <p><span className="font-medium">Recipients:</span> {selectedLeads.length}</p>
+              {personalized && (
+                <p className="flex items-center gap-1">
+                  <span className="font-medium">Send mode:</span>
+                  <Badge variant="outline" className="text-blue-700 bg-blue-50 border-blue-200">
+                    Personalized
+                  </Badge>
+                </p>
+              )}
               {selectedTemplate && (
                 <p><span className="font-medium">Template:</span> {templates.find(t => t.id === selectedTemplate)?.name || 'Unknown'}</p>
               )}
