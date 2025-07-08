@@ -1,7 +1,8 @@
 'use client';
 
 import { Badge } from "@/components/ui/badge";
-import { Mail, BarChart3, Users, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Mail, BarChart3, Users, Target, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface EmailsHeaderProps {
@@ -10,6 +11,8 @@ interface EmailsHeaderProps {
   conversionRate: number;
   currentTab?: 'emails' | 'analytics';
   onTabChange?: (tab: 'emails' | 'analytics') => void;
+  onRefresh?: () => void | Promise<void>;
+  isRefreshing?: boolean;
 }
 
 export function EmailsHeader({ 
@@ -17,7 +20,9 @@ export function EmailsHeader({
   totalLeads, 
   conversionRate,
   currentTab = 'emails',
-  onTabChange
+  onTabChange,
+  onRefresh,
+  isRefreshing = false
 }: EmailsHeaderProps) {
   const tabs = [
     {
@@ -45,6 +50,18 @@ export function EmailsHeader({
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {onRefresh && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="flex items-center gap-1">
               <Mail className="h-3 w-3" />

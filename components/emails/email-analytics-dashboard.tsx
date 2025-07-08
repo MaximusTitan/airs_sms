@@ -3,7 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Calendar, TrendingUp, TrendingDown, Mail, Eye, MousePointer, AlertTriangle, XCircle, CheckCircle } from "lucide-react";
 import { EmailAnalytics, EmailMetricsByDate, EmailEngagementTrend } from "@/lib/email-analytics";
 import { 
@@ -150,10 +156,15 @@ export function EmailAnalyticsDashboard({ initialData }: EmailAnalyticsDashboard
             onValueChange={setTimeRange}
             disabled={loading}
           >
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-            <option value="1y">Last year</option>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select time range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectItem value="1y">Last year</SelectItem>
+            </SelectContent>
           </Select>
           <Button onClick={refreshData} disabled={loading} variant="outline">
             <Calendar className="h-4 w-4 mr-2" />
@@ -215,6 +226,8 @@ export function EmailAnalyticsDashboard({ initialData }: EmailAnalyticsDashboard
           <EmailStatusPieChart 
             data={{
               delivered: analytics.delivered,
+              opened: analytics.opened,
+              clicked: analytics.clicked,
               bounced: analytics.bounced,
               failed: analytics.failed,
               complained: analytics.complained

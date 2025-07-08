@@ -1,6 +1,12 @@
 'use client';
 
 import { 
+  ChartContainer,
+  ChartConfig,
+  ChartTooltip,
+  ChartTooltipContent 
+} from "@/components/ui/chart";
+import { 
   LineChart, 
   Line, 
   AreaChart, 
@@ -10,8 +16,6 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell
@@ -22,6 +26,83 @@ interface EmailVolumeChartProps {
   data: EmailMetricsByDate[];
 }
 
+// Chart configurations
+const volumeChartConfig = {
+  sent: {
+    label: "Sent",
+    color: "hsl(var(--chart-1))",
+  },
+  delivered: {
+    label: "Delivered", 
+    color: "hsl(var(--chart-2))",
+  },
+  opened: {
+    label: "Opened",
+    color: "hsl(var(--chart-3))",
+  },
+  clicked: {
+    label: "Clicked",
+    color: "hsl(var(--chart-4))",
+  },
+} satisfies ChartConfig;
+
+const engagementChartConfig = {
+  openRate: {
+    label: "Open Rate",
+    color: "hsl(var(--chart-1))",
+  },
+  clickRate: {
+    label: "Click Rate",
+    color: "hsl(var(--chart-2))",
+  },
+  bounceRate: {
+    label: "Bounce Rate",
+    color: "hsl(var(--chart-3))",
+  },
+} satisfies ChartConfig;
+
+const performanceChartConfig = {
+  delivered: {
+    label: "Delivered",
+    color: "hsl(var(--chart-1))",
+  },
+  bounced: {
+    label: "Bounced",
+    color: "hsl(var(--chart-2))",
+  },
+  failed: {
+    label: "Failed",
+    color: "hsl(var(--chart-3))",
+  },
+} satisfies ChartConfig;
+
+const statusChartConfig = {
+  delivered: {
+    label: "Delivered",
+    color: "hsl(var(--chart-1))",
+  },
+  opened: {
+    label: "Opened",
+    color: "hsl(var(--chart-2))",
+  },
+  clicked: {
+    label: "Clicked", 
+    color: "hsl(var(--chart-3))",
+  },
+  bounced: {
+    label: "Bounced",
+    color: "hsl(var(--chart-4))",
+  },
+  failed: {
+    label: "Failed",
+    color: "hsl(var(--chart-5))",
+  },
+  complained: {
+    label: "Complained",
+    color: "hsl(var(--chart-6))",
+  },
+} satisfies ChartConfig;
+
 export function EmailVolumeChart({ data }: EmailVolumeChartProps) {
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', { 
@@ -30,65 +111,66 @@ export function EmailVolumeChart({ data }: EmailVolumeChartProps) {
     });
   };
 
+  // Handle empty data
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 w-full flex items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <p className="text-sm">No email data available</p>
+          <p className="text-xs">Send some emails to see analytics</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis 
-            dataKey="date" 
-            tickFormatter={formatDate}
-            stroke="#666"
-            fontSize={12}
-          />
-          <YAxis stroke="#666" fontSize={12} />
-          <Tooltip 
-            labelFormatter={(value) => formatDate(value as string)}
-            contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px'
-            }}
-          />
-          <Area
-            type="monotone"
-            dataKey="sent"
-            stackId="1"
-            stroke="#3b82f6"
-            fill="#3b82f6"
-            fillOpacity={0.6}
-            name="Sent"
-          />
-          <Area
-            type="monotone"
-            dataKey="delivered"
-            stackId="2"
-            stroke="#10b981"
-            fill="#10b981"
-            fillOpacity={0.6}
-            name="Delivered"
-          />
-          <Area
-            type="monotone"
-            dataKey="opened"
-            stackId="3"
-            stroke="#8b5cf6"
-            fill="#8b5cf6"
-            fillOpacity={0.6}
-            name="Opened"
-          />
-          <Area
-            type="monotone"
-            dataKey="clicked"
-            stackId="4"
-            stroke="#f59e0b"
-            fill="#f59e0b"
-            fillOpacity={0.6}
-            name="Clicked"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={volumeChartConfig} className="h-64 w-full">
+      <AreaChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis 
+          dataKey="date" 
+          tickFormatter={formatDate}
+          fontSize={12}
+        />
+        <YAxis fontSize={12} />
+        <ChartTooltip 
+          content={<ChartTooltipContent />}
+          labelFormatter={(value) => formatDate(value as string)}
+        />
+        <Area 
+          type="monotone" 
+          dataKey="sent" 
+          stackId="1" 
+          stroke="var(--color-sent)" 
+          fill="var(--color-sent)" 
+          fillOpacity={0.7}
+        />
+        <Area 
+          type="monotone" 
+          dataKey="delivered" 
+          stackId="1" 
+          stroke="var(--color-delivered)" 
+          fill="var(--color-delivered)" 
+          fillOpacity={0.7}
+        />
+        <Area 
+          type="monotone" 
+          dataKey="opened" 
+          stackId="1" 
+          stroke="var(--color-opened)" 
+          fill="var(--color-opened)" 
+          fillOpacity={0.7}
+        />
+        <Area 
+          type="monotone" 
+          dataKey="clicked" 
+          stackId="1" 
+          stroke="var(--color-clicked)" 
+          fill="var(--color-clicked)" 
+          fillOpacity={0.7}
+        />
+      </AreaChart>
+    </ChartContainer>
   );
 }
 
@@ -104,61 +186,60 @@ export function EngagementRatesChart({ data }: EngagementRatesChartProps) {
     });
   };
 
+  // Handle empty data
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 w-full flex items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <p className="text-sm">No engagement data available</p>
+          <p className="text-xs">Send some emails to see engagement trends</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis 
-            dataKey="date" 
-            tickFormatter={formatDate}
-            stroke="#666"
-            fontSize={12}
-          />
-          <YAxis 
-            stroke="#666" 
-            fontSize={12}
-            label={{ value: 'Rate (%)', angle: -90, position: 'insideLeft' }}
-          />
-          <Tooltip 
-            labelFormatter={(value) => formatDate(value as string)}
-            formatter={(value: number, name: string) => [
-              `${value.toFixed(2)}%`, 
-              name
-            ]}
-            contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px'
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="openRate"
-            stroke="#8b5cf6"
-            strokeWidth={2}
-            dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
-            name="Open Rate"
-          />
-          <Line
-            type="monotone"
-            dataKey="clickRate"
-            stroke="#f59e0b"
-            strokeWidth={2}
-            dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-            name="Click Rate"
-          />
-          <Line
-            type="monotone"
-            dataKey="bounceRate"
-            stroke="#ef4444"
-            strokeWidth={2}
-            dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-            name="Bounce Rate"
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={engagementChartConfig} className="h-64 w-full">
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis 
+          dataKey="date" 
+          tickFormatter={formatDate}
+          fontSize={12}
+        />
+        <YAxis 
+          domain={[0, 100]}
+          fontSize={12}
+          tickFormatter={(value) => `${value}%`}
+        />
+        <ChartTooltip 
+          content={<ChartTooltipContent />}
+          labelFormatter={(value) => formatDate(value as string)}
+          formatter={(value: number) => [`${value.toFixed(1)}%`]}
+        />
+        <Line 
+          type="monotone" 
+          dataKey="openRate" 
+          stroke="var(--color-openRate)" 
+          strokeWidth={2}
+          dot={{ r: 3 }}
+        />
+        <Line 
+          type="monotone" 
+          dataKey="clickRate" 
+          stroke="var(--color-clickRate)" 
+          strokeWidth={2}
+          dot={{ r: 3 }}
+        />
+        <Line 
+          type="monotone" 
+          dataKey="bounceRate" 
+          stroke="var(--color-bounceRate)" 
+          strokeWidth={2}
+          dot={{ r: 3 }}
+        />
+      </LineChart>
+    </ChartContainer>
   );
 }
 
@@ -174,38 +255,45 @@ export function EmailPerformanceBarChart({ data }: EmailPerformanceBarChartProps
     });
   };
 
+  // Handle empty data
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 w-full flex items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <p className="text-sm">No performance data available</p>
+          <p className="text-xs">Send some emails to see performance metrics</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis 
-            dataKey="date" 
-            tickFormatter={formatDate}
-            stroke="#666"
-            fontSize={12}
-          />
-          <YAxis stroke="#666" fontSize={12} />
-          <Tooltip 
-            labelFormatter={(value) => formatDate(value as string)}
-            contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px'
-            }}
-          />
-          <Bar dataKey="delivered" fill="#10b981" name="Delivered" />
-          <Bar dataKey="bounced" fill="#ef4444" name="Bounced" />
-          <Bar dataKey="failed" fill="#6b7280" name="Failed" />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={performanceChartConfig} className="h-64 w-full">
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis 
+          dataKey="date" 
+          tickFormatter={formatDate}
+          fontSize={12}
+        />
+        <YAxis fontSize={12} />
+        <ChartTooltip 
+          content={<ChartTooltipContent />}
+          labelFormatter={(value) => formatDate(value as string)}
+        />
+        <Bar dataKey="delivered" fill="var(--color-delivered)" />
+        <Bar dataKey="bounced" fill="var(--color-bounced)" />
+        <Bar dataKey="failed" fill="var(--color-failed)" />
+      </BarChart>
+    </ChartContainer>
   );
 }
 
 interface EmailStatusPieChartProps {
   data: {
     delivered: number;
+    opened: number;
+    clicked: number;
     bounced: number;
     failed: number;
     complained: number;
@@ -213,53 +301,51 @@ interface EmailStatusPieChartProps {
 }
 
 export function EmailStatusPieChart({ data }: EmailStatusPieChartProps) {
-  const total = data.delivered + data.bounced + data.failed + data.complained;
-  
-  if (total === 0) {
+  const pieData = [
+    { name: 'delivered', value: data.delivered, fill: 'var(--color-delivered)' },
+    { name: 'opened', value: data.opened, fill: 'var(--color-opened)' },
+    { name: 'clicked', value: data.clicked, fill: 'var(--color-clicked)' },
+    { name: 'bounced', value: data.bounced, fill: 'var(--color-bounced)' },
+    { name: 'failed', value: data.failed, fill: 'var(--color-failed)' },
+    { name: 'complained', value: data.complained, fill: 'var(--color-complained)' },
+  ].filter(item => item.value > 0);
+
+  // Handle empty data
+  if (pieData.length === 0) {
     return (
       <div className="h-64 w-full flex items-center justify-center text-muted-foreground">
-        No data available
+        <div className="text-center">
+          <p className="text-sm">No status data available</p>
+          <p className="text-xs">Send some emails to see status distribution</p>
+        </div>
       </div>
     );
   }
 
-  const pieData = [
-    { name: 'Delivered', value: data.delivered, color: '#10b981' },
-    { name: 'Bounced', value: data.bounced, color: '#f59e0b' },
-    { name: 'Failed', value: data.failed, color: '#ef4444' },
-    { name: 'Complained', value: data.complained, color: '#8b5cf6' }
-  ].filter(item => item.value > 0);
-
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={pieData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ name, percent }) => 
-              `${name} ${(percent * 100).toFixed(1)}%`
-            }
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {pieData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip 
-            formatter={(value: number) => [value.toLocaleString(), 'Count']}
-            contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px'
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={statusChartConfig} className="h-64 w-full">
+      <PieChart>
+        <ChartTooltip 
+          content={<ChartTooltipContent />}
+          formatter={(value: number, name: string) => [
+            value.toLocaleString(),
+            statusChartConfig[name as keyof typeof statusChartConfig]?.label || name
+          ]}
+        />
+        <Pie
+          data={pieData}
+          cx="50%"
+          cy="50%"
+          innerRadius={60}
+          outerRadius={100}
+          paddingAngle={5}
+          dataKey="value"
+        >
+          {pieData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={entry.fill} />
+          ))}
+        </Pie>
+      </PieChart>
+    </ChartContainer>
   );
 }

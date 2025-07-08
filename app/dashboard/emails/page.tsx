@@ -33,14 +33,35 @@ function EmailsPageContent() {
 
   const loadEmailsData = async () => {
     try {
-      // Mock data for now - in a real app you'd fetch from your API
-      const mockEmailsData = {
-        emailsWithLeads: [],
-        templates: []
-      };
-      setEmailsData(mockEmailsData);
+      setLoading(true);
+      
+      // Fetch emails and templates in parallel
+      const [emailsResponse, templatesResponse] = await Promise.all([
+        fetch('/api/emails'),
+        fetch('/api/emails/templates')
+      ]);
+
+      if (!emailsResponse.ok) {
+        throw new Error('Failed to fetch emails');
+      }
+      if (!templatesResponse.ok) {
+        throw new Error('Failed to fetch templates');
+      }
+
+      const emailsData = await emailsResponse.json();
+      const templatesData = await templatesResponse.json();
+
+      setEmailsData({
+        emailsWithLeads: emailsData.emails || [],
+        templates: templatesData || []
+      });
     } catch (error) {
       console.error('Error loading emails data:', error);
+      // Set empty data on error
+      setEmailsData({
+        emailsWithLeads: [],
+        templates: []
+      });
     } finally {
       setLoading(false);
     }
@@ -134,6 +155,8 @@ function EmailsPageContent() {
         conversionRate={conversionRate}
         currentTab={currentTab}
         onTabChange={handleTabChange}
+        onRefresh={loadEmailsData}
+        isRefreshing={loading}
       />
 
       {currentTab === 'emails' && (
