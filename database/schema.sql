@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS leads (
     email TEXT NOT NULL,
     phone TEXT,
     source TEXT,
-    status TEXT NOT NULL DEFAULT 'unqualified' CHECK (status IN ('qualified', 'unqualified', 'trash')),
+    status TEXT NOT NULL DEFAULT 'new_lead' CHECK (status IN ('new_lead', 'qualified', 'pilot_ready', 'running_pilot', 'pilot_done', 'sale_done', 'implementation', 'not_interested', 'unqualified', 'trash')),
     form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
     notes TEXT,
     tags TEXT[] DEFAULT '{}',

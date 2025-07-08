@@ -322,8 +322,22 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'new_lead':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case "qualified":
         return "bg-green-100 text-green-800 border-green-200";
+      case 'pilot_ready':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'running_pilot':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'pilot_done':
+        return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'sale_done':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'implementation':
+        return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+      case 'not_interested':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case "unqualified":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "trash":
@@ -335,7 +349,14 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
 
   const getStatusCounts = () => {
     const counts = {
+      new_lead: 0,
       qualified: 0,
+      pilot_ready: 0,
+      running_pilot: 0,
+      pilot_done: 0,
+      sale_done: 0,
+      implementation: 0,
+      not_interested: 0,
       unqualified: 0,
       trash: 0,
     };
@@ -1041,6 +1062,19 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
+              New Leads
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {statusCounts.new_lead}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Qualified
             </CardTitle>
           </CardHeader>
@@ -1054,23 +1088,25 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Unqualified
+              In Progress
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {statusCounts.unqualified}
+            <div className="text-2xl font-bold text-purple-600">
+              {statusCounts.pilot_ready + statusCounts.running_pilot + statusCounts.pilot_done + statusCounts.implementation}
             </div>
           </CardContent>
-        </Card>        <Card>
+        </Card>
+
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Trash
+              Completed
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {statusCounts.trash}
+            <div className="text-2xl font-bold text-emerald-600">
+              {statusCounts.sale_done}
             </div>
           </CardContent>
         </Card>
@@ -1272,19 +1308,54 @@ export function GroupDetailView({ group }: GroupDetailViewProps) {
                     <SelectValue placeholder="Update Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unqualified">
-                      <Badge className={getStatusColor('unqualified')}>
-                        unqualified
+                    <SelectItem value="new_lead">
+                      <Badge className={getStatusColor('new_lead')}>
+                        New Lead
                       </Badge>
                     </SelectItem>
                     <SelectItem value="qualified">
                       <Badge className={getStatusColor('qualified')}>
-                        qualified
+                        Qualified
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="pilot_ready">
+                      <Badge className={getStatusColor('pilot_ready')}>
+                        Pilot Ready
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="running_pilot">
+                      <Badge className={getStatusColor('running_pilot')}>
+                        Running Pilot
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="pilot_done">
+                      <Badge className={getStatusColor('pilot_done')}>
+                        Pilot Done
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="sale_done">
+                      <Badge className={getStatusColor('sale_done')}>
+                        Sale Done
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="implementation">
+                      <Badge className={getStatusColor('implementation')}>
+                        Implementation
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="not_interested">
+                      <Badge className={getStatusColor('not_interested')}>
+                        Not Interested
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="unqualified">
+                      <Badge className={getStatusColor('unqualified')}>
+                        Unqualified
                       </Badge>
                     </SelectItem>
                     <SelectItem value="trash">
                       <Badge className={getStatusColor('trash')}>
-                        trash
+                        Trash
                       </Badge>
                     </SelectItem>
                   </SelectContent>

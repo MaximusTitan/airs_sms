@@ -127,8 +127,22 @@ export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'new_lead':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'qualified':
         return 'bg-green-100 text-green-800 border-green-200';
+      case 'pilot_ready':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'running_pilot':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'pilot_done':
+        return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'sale_done':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'implementation':
+        return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+      case 'not_interested':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'unqualified':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'trash':
@@ -338,7 +352,7 @@ export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
           email: '',
           phone: null,
           source: 'CSV Import',
-          status: 'unqualified',
+          status: 'new_lead',
           notes: null,
           form_data: {}
         };
@@ -366,7 +380,7 @@ export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
 
           // Handle mapped fields
           if (mappedField && ['name', 'email', 'phone', 'source', 'notes', 'status'].includes(mappedField)) {
-            if (mappedField === 'status' && !['qualified', 'unqualified', 'trash'].includes(value.toLowerCase())) {
+            if (mappedField === 'status' && !['new_lead', 'qualified', 'pilot_ready', 'running_pilot', 'pilot_done', 'sale_done', 'implementation', 'not_interested', 'unqualified', 'trash'].includes(value.toLowerCase().replace(/\s+/g, '_'))) {
               lead[mappedField] = 'unqualified';
             } else if (mappedField === 'email') {
               // Extract all emails from this field and combine with existing
@@ -398,7 +412,9 @@ export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
               } else if (mappedField === 'source') {
                 lead.source = value || 'CSV Import';
               } else if (mappedField === 'status') {
-                lead.status = value || 'unqualified';
+                // Normalize status value by converting to lowercase and replacing spaces with underscores
+                const normalizedStatus = value.toLowerCase().replace(/\s+/g, '_');
+                lead.status = normalizedStatus || 'new_lead';
               } else if (mappedField === 'notes') {
                 lead.notes = value || '-';
               }
@@ -647,24 +663,73 @@ export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
                   <SelectValue placeholder="Update Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unqualified">
+                  <SelectItem value="new_lead">
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${getStatusColor('unqualified')}`}>
-                        unqualified
+                      <Badge className={`text-xs ${getStatusColor('new_lead')}`}>
+                        New Lead
                       </Badge>
                     </div>
                   </SelectItem>
                   <SelectItem value="qualified">
                     <div className="flex items-center gap-2">
                       <Badge className={`text-xs ${getStatusColor('qualified')}`}>
-                        qualified
+                        Qualified
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="pilot_ready">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${getStatusColor('pilot_ready')}`}>
+                        Pilot Ready
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="running_pilot">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${getStatusColor('running_pilot')}`}>
+                        Running Pilot
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="pilot_done">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${getStatusColor('pilot_done')}`}>
+                        Pilot Done
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="sale_done">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${getStatusColor('sale_done')}`}>
+                        Sale Done
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="implementation">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${getStatusColor('implementation')}`}>
+                        Implementation
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="not_interested">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${getStatusColor('not_interested')}`}>
+                        Not Interested
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="unqualified">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${getStatusColor('unqualified')}`}>
+                        Unqualified
                       </Badge>
                     </div>
                   </SelectItem>
                   <SelectItem value="trash">
                     <div className="flex items-center gap-2">
                       <Badge className={`text-xs ${getStatusColor('trash')}`}>
-                        trash
+                        Trash
                       </Badge>
                     </div>
                   </SelectItem>

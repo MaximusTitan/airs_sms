@@ -53,7 +53,7 @@ export function EditLeadDialog({
     email: "",
     phone: "",
     notes: "",
-    status: "unqualified" as LeadStatus,
+    status: "new_lead" as LeadStatus,
     tags: [] as string[],
   });
   const [submissionData, setSubmissionData] = useState<Record<string, string | boolean | number>>({});
@@ -106,8 +106,22 @@ export function EditLeadDialog({
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'new_lead':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case "qualified":
         return "bg-green-100 text-green-800 border-green-200";
+      case 'pilot_ready':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'running_pilot':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'pilot_done':
+        return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'sale_done':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'implementation':
+        return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+      case 'not_interested':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case "unqualified":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "trash":
@@ -179,24 +193,65 @@ export function EditLeadDialog({
                   <SelectTrigger>
                     <SelectValue>
                       <Badge className={getStatusColor(formData.status)}>
-                        {formData.status}
+                        {formData.status === 'new_lead' ? 'New Lead' :
+                         formData.status === 'pilot_ready' ? 'Pilot Ready' :
+                         formData.status === 'running_pilot' ? 'Running Pilot' :
+                         formData.status === 'pilot_done' ? 'Pilot Done' :
+                         formData.status === 'sale_done' ? 'Sale Done' :
+                         formData.status === 'not_interested' ? 'Not Interested' :
+                         formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
                       </Badge>
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unqualified">
-                      <Badge className={getStatusColor("unqualified")}>
-                        unqualified
+                    <SelectItem value="new_lead">
+                      <Badge className={getStatusColor("new_lead")}>
+                        New Lead
                       </Badge>
                     </SelectItem>
                     <SelectItem value="qualified">
                       <Badge className={getStatusColor("qualified")}>
-                        qualified
+                        Qualified
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="pilot_ready">
+                      <Badge className={getStatusColor("pilot_ready")}>
+                        Pilot Ready
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="running_pilot">
+                      <Badge className={getStatusColor("running_pilot")}>
+                        Running Pilot
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="pilot_done">
+                      <Badge className={getStatusColor("pilot_done")}>
+                        Pilot Done
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="sale_done">
+                      <Badge className={getStatusColor("sale_done")}>
+                        Sale Done
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="implementation">
+                      <Badge className={getStatusColor("implementation")}>
+                        Implementation
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="not_interested">
+                      <Badge className={getStatusColor("not_interested")}>
+                        Not Interested
+                      </Badge>
+                    </SelectItem>
+                    <SelectItem value="unqualified">
+                      <Badge className={getStatusColor("unqualified")}>
+                        Unqualified
                       </Badge>
                     </SelectItem>
                     <SelectItem value="trash">
                       <Badge className={getStatusColor("trash")}>
-                        trash
+                        Trash
                       </Badge>
                     </SelectItem>
                   </SelectContent>

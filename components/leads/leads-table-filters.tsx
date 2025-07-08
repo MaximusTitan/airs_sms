@@ -121,7 +121,14 @@ export function LeadsTableFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="new_lead">New Lead</SelectItem>
             <SelectItem value="qualified">Qualified</SelectItem>
+            <SelectItem value="pilot_ready">Pilot Ready</SelectItem>
+            <SelectItem value="running_pilot">Running Pilot</SelectItem>
+            <SelectItem value="pilot_done">Pilot Done</SelectItem>
+            <SelectItem value="sale_done">Sale Done</SelectItem>
+            <SelectItem value="implementation">Implementation</SelectItem>
+            <SelectItem value="not_interested">Not Interested</SelectItem>
             <SelectItem value="unqualified">Unqualified</SelectItem>
             <SelectItem value="trash">Trash</SelectItem>
           </SelectContent>

@@ -133,8 +133,22 @@ export function EmailComposer({ leads, templates, preSelectedLeads = [], preSele
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'new_lead':
+        return 'bg-blue-100 text-blue-800';
       case 'qualified':
         return 'bg-green-100 text-green-800';
+      case 'pilot_ready':
+        return 'bg-purple-100 text-purple-800';
+      case 'running_pilot':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'pilot_done':
+        return 'bg-teal-100 text-teal-800';
+      case 'sale_done':
+        return 'bg-emerald-100 text-emerald-800';
+      case 'implementation':
+        return 'bg-cyan-100 text-cyan-800';
+      case 'not_interested':
+        return 'bg-orange-100 text-orange-800';
       case 'unqualified':
         return 'bg-yellow-100 text-yellow-800';
       case 'trash':

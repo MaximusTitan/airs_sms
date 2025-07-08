@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from 'next/cache';
 
-// Enable explicit caching with revalidation
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(_request: NextRequest) {
   try {
@@ -16,7 +15,7 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch all leads for all users - no user filtering
+    // Fetch all leads with form information
     const { data: leads, error } = await supabase
       .from('leads')
       .select(`
@@ -43,7 +42,11 @@ export async function GET(_request: NextRequest) {
       throw error;
     }
 
-    return NextResponse.json({ leads: leads || [] });
+    // Set caching headers for better performance
+    const response = NextResponse.json({ leads: leads || [] });
+    response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
+    
+    return response;
 
   } catch (error) {
     console.error("Error fetching leads:", error);
@@ -82,7 +85,7 @@ export async function POST(request: NextRequest) {
     revalidatePath('/dashboard/leads');
     revalidatePath('/dashboard');
 
-    return NextResponse.json({ lead });
+    return NextResponse.json({ lead }, { status: 201 });
 
   } catch (error) {
     console.error("Error creating lead:", error);

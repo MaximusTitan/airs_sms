@@ -11,7 +11,7 @@ export async function PATCH(
     const { id } = await params;
 
     // Validate status
-    const validStatuses = ['qualified', 'unqualified', 'trash'];
+    const validStatuses = ['new_lead', 'qualified', 'pilot_ready', 'running_pilot', 'pilot_done', 'sale_done', 'implementation', 'not_interested', 'unqualified', 'trash'];
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status' },

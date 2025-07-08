@@ -1,52 +1,70 @@
-import { createClient } from "@/lib/supabase/server";
+import { Suspense } from "react";
 import { LeadsPageContent } from "@/components/leads/leads-page-content";
+import { getUser, getLeadsWithGroups } from "@/lib/cache";
 import { redirect } from "next/navigation";
 
-export const dynamic = 'force-dynamic';
+// Enable ISR with 2-minute revalidation for leads data
+export const revalidate = 120;
+
+function LeadsPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Header skeleton */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-8 bg-muted rounded w-32 animate-pulse"></div>
+          <div className="h-4 bg-muted rounded w-64 animate-pulse"></div>
+        </div>
+        <div className="flex gap-2">
+          <div className="h-10 bg-muted rounded w-24 animate-pulse"></div>
+          <div className="h-10 bg-muted rounded w-32 animate-pulse"></div>
+        </div>
+      </div>
+      
+      {/* Table skeleton */}
+      <div className="border rounded-lg">
+        <div className="p-4 border-b">
+          <div className="h-10 bg-muted rounded animate-pulse"></div>
+        </div>
+        <div className="space-y-2 p-4">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="h-16 bg-muted rounded animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function LeadsContent() {
+  try {
+    const leadsWithGroups = await getLeadsWithGroups();
+    return <LeadsPageContent leads={leadsWithGroups} />;
+  } catch (error) {
+    console.error('Error loading leads:', error);
+    return (
+      <div className="p-8 text-center">
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg inline-block">
+          <p className="text-destructive">Failed to load leads. Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
+}
 
 export default async function LeadsPage() {
-  const supabase = await createClient();
+  // Authenticate user first
+  const user = await getUser();
   
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) {
     redirect('/auth/login');
   }
 
-  // Fetch leads with form information including field definitions - no user filtering
-  const { data: leads } = await supabase
-    .from('leads')
-    .select(`
-      *,
-      forms (
-        name,
-        fields
-      )
-    `)
-    .order('created_at', { ascending: false });
-
-  // Fetch group memberships separately to avoid join issues
-  let leadsWithGroups = leads || [];
-  if (leads && leads.length > 0) {    const { data: memberships } = await supabase
-      .from('group_memberships')
-      .select(`
-        lead_id,
-        lead_groups (
-          id,
-          name
-        )
-      `)
-      .in('lead_id', leads.map(lead => lead.id));
-
-    // Attach group information to leads
-    leadsWithGroups = leads.map(lead => ({
-      ...lead,
-      group_memberships: memberships?.filter(m => m.lead_id === lead.id) || []    }));
-  }
   return (
     <div className="p-8 space-y-8 bg-background min-h-full">
-      <LeadsPageContent leads={leadsWithGroups} />
+      <Suspense fallback={<LeadsPageSkeleton />}>
+        <LeadsContent />
+      </Suspense>
     </div>
   );
 }

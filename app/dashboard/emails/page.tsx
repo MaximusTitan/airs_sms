@@ -1,57 +1,83 @@
-import { createClient } from "@/lib/supabase/server";
+import { Suspense } from "react";
 import { EmailsHeader } from "@/components/emails/emails-header";
 import { EmailsList } from "@/components/emails/emails-list";
+import { getUser, getEmailsWithLeads, getEmailTemplates } from "@/lib/cache";
+
+// Enable ISR with 3-minute revalidation for emails
+export const revalidate = 180;
+
+function EmailsListSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Stats skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="p-4 bg-card border border-border rounded-lg animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-muted rounded-lg"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-20"></div>
+                <div className="h-6 bg-muted rounded w-8"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Email list skeleton */}
+      <div className="space-y-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="p-6 bg-card border border-border rounded-lg animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-5 bg-muted rounded w-48"></div>
+                <div className="h-4 bg-muted rounded w-32"></div>
+              </div>
+              <div className="h-6 bg-muted rounded w-16"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function EmailsContent() {
+  try {
+    const [emailsWithLeads, templates] = await Promise.all([
+      getEmailsWithLeads(),
+      getEmailTemplates()
+    ]);
+    
+    const fromEmail = process.env.FROM_EMAIL || 'AIRS@aireadyschool.com';
+    
+    return <EmailsList emails={emailsWithLeads} templates={templates} fromEmail={fromEmail} />;
+  } catch (error) {
+    console.error('Error loading emails:', error);
+    return (
+      <div className="p-8 text-center">
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg inline-block">
+          <p className="text-destructive">Failed to load emails. Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
+}
 
 export default async function EmailsPage() {
-  const supabase = await createClient();
-  
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) {
     return null;
-  }  // Fetch emails with lead information for recipients - no user filtering
-  const { data: emails } = await supabase
-    .from('emails')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  // For each email, fetch the lead details if lead_ids exist
-  let emailsWithLeads = emails || [];
-  if (emails && emails.length > 0) {
-    // Get all unique lead IDs from all emails
-    const allLeadIds = Array.from(new Set(
-      emails
-        .filter(email => email.lead_ids && email.lead_ids.length > 0)
-        .flatMap(email => email.lead_ids)
-    ));
-
-    if (allLeadIds.length > 0) {
-      const { data: leads } = await supabase
-        .from('leads')
-        .select('id, name, email, status')
-        .in('id', allLeadIds);
-
-      // Attach lead details to each email
-      emailsWithLeads = emails.map(email => ({
-        ...email,
-        recipients: email.lead_ids 
-          ? leads?.filter(lead => email.lead_ids.includes(lead.id)) || []
-          : []
-      }));
-    }
   }
-  // Fetch email templates - no user filtering
-  const { data: templates } = await supabase
-    .from('email_templates')
-    .select('*')
-    .order('created_at', { ascending: false });
-  // Get the FROM_EMAIL from environment
-  const fromEmail = process.env.FROM_EMAIL || 'AIRS@aireadyschool.com';return (
+
+  return (
     <div className="p-8 space-y-8 bg-background min-h-full">
       <EmailsHeader />
-      <EmailsList emails={emailsWithLeads} templates={templates || []} fromEmail={fromEmail} />
+      
+      <Suspense fallback={<EmailsListSkeleton />}>
+        <EmailsContent />
+      </Suspense>
     </div>
   );
 }

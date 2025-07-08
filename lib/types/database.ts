@@ -203,7 +203,7 @@ export interface Database {
   }
 }
 
-export type LeadStatus = 'qualified' | 'unqualified' | 'trash'
+export type LeadStatus = 'new_lead' | 'qualified' | 'pilot_ready' | 'running_pilot' | 'pilot_done' | 'sale_done' | 'implementation' | 'not_interested' | 'unqualified' | 'trash'
 export type EmailStatus = 'draft' | 'sending' | 'sent' | 'failed' | 'partially_sent'
 
 export interface FormField {

@@ -4,7 +4,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "analyze": "cross-env ANALYZE=true next build",
+    "build:analyze": "npm run analyze",
+    "perf:lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html",
+    "perf:bundle": "npm run build && npx next-bundle-analyzer"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -35,10 +39,12 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@next/bundle-analyzer": "^15.3.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "postcss": "^8",
