@@ -394,6 +394,12 @@ export async function POST(request: NextRequest) {
               headers: {
                 'X-Idempotency-Key': idempotencyKey,
               },
+              tags: [
+                {
+                  name: 'category',
+                  value: 'bulk-email'
+                }
+              ]
             });
             
             // Count this as an API request

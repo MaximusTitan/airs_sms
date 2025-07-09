@@ -119,6 +119,12 @@ export async function POST(request: NextRequest) {
           headers: {
             'X-Idempotency-Key': idempotencyKey,
           },
+          tags: [
+            {
+              name: 'category',
+              value: 'bulk-email'
+            }
+          ]
         });
           if (error) {
           throw error;

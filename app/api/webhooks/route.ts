@@ -251,7 +251,7 @@ async function handleEmailOpened(data: EmailEventData): Promise<void> {
  * Triggered when a recipient clicks a link in an email
  */
 async function handleEmailClicked(data: EmailEventData): Promise<void> {
-  logger.info(`Email clicked: ${data.email_id} by ${data.to.join(', ')}, URL: ${data.click_url}`);
+  logger.info(`🎯 Email clicked: ${data.email_id} by ${data.to.join(', ')}, URL: ${data.click_url}`);
   
   try {
     // Record the event for analytics
@@ -262,6 +262,8 @@ async function handleEmailClicked(data: EmailEventData): Promise<void> {
       data: data
     });
     
+    logger.info(`✅ Click event recorded successfully for email ${data.email_id}`);
+    
     // Update lead engagement score (higher weight for clicks)
     for (const email of data.to) {
       await updateLeadEngagement(email, 'email_clicked');
@@ -270,8 +272,11 @@ async function handleEmailClicked(data: EmailEventData): Promise<void> {
     // Track metrics
     await trackEmailMetrics('clicked');
     
+    logger.info(`📊 Click metrics updated for email ${data.email_id}`);
+    
   } catch (error) {
-    console.error('Error handling email.clicked event:', error);
+    console.error('❌ Error handling email.clicked event:', error);
+    logger.error(`Failed to process click event for ${data.email_id}:`, error);
   }
   
   // TODO: Track click analytics and conversion funnel

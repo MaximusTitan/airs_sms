@@ -162,6 +162,17 @@ export async function getEmailAnalytics(
     throw error;
   }
   
+  // Debug: Log if we have open events but no click events
+  const hasOpenEvents = events?.some(e => e.event_type === 'opened');
+  const hasClickEvents = events?.some(e => e.event_type === 'clicked');
+  
+  if (hasOpenEvents && !hasClickEvents) {
+    console.warn('⚠️ Email Analytics: Open events found but no click events. This suggests:');
+    console.warn('   1. Click tracking may not be enabled at the domain level in Resend');
+    console.warn('   2. Emails may not contain trackable links');
+    console.warn('   3. Recipients may not have clicked any links yet');
+  }
+  
   // Group events by email_id and event_type to count unique events per email
   const eventsByEmailAndType = events?.reduce((acc, event) => {
     const key = `${event.email_id}_${event.event_type}`;

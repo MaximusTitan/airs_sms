@@ -11,9 +11,6 @@ interface EmailWithRecipients extends Email {
   recipients?: string[];
 }
 
-// Remove server-side data fetching for client component
-// export const revalidate = 180;
-
 function EmailsPageContent() {
   const [currentTab, setCurrentTab] = useState<'emails' | 'analytics'>('emails');
   const [emailsData, setEmailsData] = useState<{
