@@ -511,7 +511,7 @@ export function LeadsTable({
       const leadIds = selectedLeads.join(",");
       // Navigate to email compose page with selected leads
       // This would be handled by the parent component typically
-      console.log("Send email to leads:", leadIds);
+      // Send email to leads: leadIds
     }
   };
 
@@ -519,7 +519,7 @@ export function LeadsTable({
     if (selectedLeads.length > 0) {
       // Open create group dialog with selected leads
       // This would be handled by the parent component typically
-      console.log("Create group with leads:", selectedLeads);
+      // Create group with leads: selectedLeads
     }
   };
 
@@ -1327,7 +1327,7 @@ export function LeadsTable({
           onCreateGroup={handleCreateGroup}
           onExportSelected={() => {
             // TODO: Implement export functionality
-            console.log("Export selected leads");
+            // Export selected leads
           }}
           onCopySelected={() => {
             // TODO: Implement copy functionality

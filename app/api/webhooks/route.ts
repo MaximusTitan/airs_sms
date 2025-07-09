@@ -10,6 +10,8 @@ import {
   checkBounceRateThreshold,
   checkComplaintRateThreshold
 } from '@/lib/webhook-utils';
+import { validateEnvironment, checkRateLimit, getClientIP, logger } from '@/lib/config';
+import { createClient } from '@/lib/supabase/server';
 
 // Type definitions for webhook payloads
 type WebhookPayload = {
@@ -41,7 +43,7 @@ type EmailEventData = {
 async function handleWebhookEvent(payload: WebhookPayload): Promise<void> {
   const { type, data, created_at } = payload;
   
-  console.log(`Processing webhook event: ${type} at ${created_at}`);
+  logger.info(`Processing webhook event: ${type}`, { created_at });
   
   switch (type) {
     // Email delivery events
@@ -78,7 +80,7 @@ async function handleWebhookEvent(payload: WebhookPayload): Promise<void> {
       break;
     
     default:
-      console.warn(`Unhandled webhook event type: ${type}`);
+      logger.warn(`Unhandled webhook event type: ${type}`);
       // TODO: Add monitoring/alerting for unknown event types
       break;
   }
@@ -89,7 +91,7 @@ async function handleWebhookEvent(payload: WebhookPayload): Promise<void> {
  * Triggered when an email is successfully sent from Resend
  */
 async function handleEmailSent(data: EmailEventData): Promise<void> {
-  console.log(`Email sent: ${data.email_id} to ${data.to.join(', ')}`);
+  logger.info(`Email sent: ${data.email_id} to ${data.to.join(', ')}`);
   
   try {
     // Update database with sent status
@@ -123,7 +125,7 @@ async function handleEmailSent(data: EmailEventData): Promise<void> {
  * Triggered when an email is successfully delivered to the recipient's mailbox
  */
 async function handleEmailDelivered(data: EmailEventData): Promise<void> {
-  console.log(`Email delivered: ${data.email_id} to ${data.to.join(', ')}`);
+  logger.info(`Email delivered: ${data.email_id} to ${data.to.join(', ')}`);
   
   try {
     // Update database with delivered status
@@ -156,7 +158,7 @@ async function handleEmailDelivered(data: EmailEventData): Promise<void> {
  * Triggered when email delivery is delayed by the receiving server
  */
 async function handleEmailDeliveryDelayed(data: EmailEventData): Promise<void> {
-  console.log(`Email delivery delayed: ${data.email_id} to ${data.to.join(', ')}`);
+  logger.warn(`Email delivery delayed: ${data.email_id} to ${data.to.join(', ')}`);
   
   // TODO: Update database with delayed status
   // const supabase = await createClient();
@@ -180,27 +182,36 @@ async function handleEmailDeliveryDelayed(data: EmailEventData): Promise<void> {
  * Triggered when an email permanently fails to be delivered
  */
 async function handleEmailFailed(data: EmailEventData): Promise<void> {
-  console.log(`Email failed: ${data.email_id} to ${data.to.join(', ')}`);
+  logger.error(`Email failed: ${data.email_id} to ${data.to.join(', ')}`);
   
-  // TODO: Update database with failed status
-  // const supabase = await createClient();
-  // await supabase
-  //   .from('emails')
-  //   .update({ 
-  //     status: 'failed',
-  //     failed_at: new Date().toISOString(),
-  //     failure_reason: data.reason || 'Unknown'
-  //   })
-  //   .eq('resend_id', data.email_id);
+  try {
+    // Update database with failed status
+    await updateEmailStatus(data.email_id, {
+      status: 'failed',
+      failed_at: new Date().toISOString(),
+      failure_reason: (data as any).reason || 'Unknown'
+    });
+    
+    // Record the event for analytics
+    await recordEmailEvent({
+      email_id: data.email_id,
+      event_type: 'failed',
+      created_at: data.created_at,
+      data: data
+    });
+    
+    // Track metrics
+    await trackEmailMetrics('failed');
+    
+  } catch (error) {
+    console.error('Error handling email.failed event:', error);
+  }
   
   // TODO: Alert administrators of failure
   // await alertAdministrators('email_failed', data);
   
   // TODO: Mark lead as having invalid email if hard failure
   // await handleEmailFailure(data);
-  
-  // TODO: Track failure analytics for sender reputation
-  // await trackEmailEvent('failed', data);
 }
 
 /**
@@ -208,7 +219,7 @@ async function handleEmailFailed(data: EmailEventData): Promise<void> {
  * Triggered when a recipient opens an email
  */
 async function handleEmailOpened(data: EmailEventData): Promise<void> {
-  console.log(`Email opened: ${data.email_id} by ${data.to.join(', ')}`);
+  logger.info(`Email opened: ${data.email_id} by ${data.to.join(', ')}`);
   
   try {
     // Record the event for analytics
@@ -240,7 +251,7 @@ async function handleEmailOpened(data: EmailEventData): Promise<void> {
  * Triggered when a recipient clicks a link in an email
  */
 async function handleEmailClicked(data: EmailEventData): Promise<void> {
-  console.log(`Email clicked: ${data.email_id} by ${data.to.join(', ')}, URL: ${data.click_url}`);
+  logger.info(`Email clicked: ${data.email_id} by ${data.to.join(', ')}, URL: ${data.click_url}`);
   
   try {
     // Record the event for analytics
@@ -275,7 +286,7 @@ async function handleEmailClicked(data: EmailEventData): Promise<void> {
  * Triggered when an email bounces (hard or soft bounce)
  */
 async function handleEmailBounced(data: EmailEventData): Promise<void> {
-  console.log(`Email bounced: ${data.email_id} to ${data.to.join(', ')}, type: ${data.bounce_type}`);
+  logger.warn(`Email bounced: ${data.email_id} to ${data.to.join(', ')}, type: ${data.bounce_type}`);
   
   try {
     // Update database with bounce information
@@ -308,7 +319,7 @@ async function handleEmailBounced(data: EmailEventData): Promise<void> {
     await checkBounceRateThreshold();
     
   } catch (error) {
-    console.error('Error handling email.bounced event:', error);
+    logger.error('Error handling email.bounced event', error);
   }
 }
 
@@ -317,7 +328,7 @@ async function handleEmailBounced(data: EmailEventData): Promise<void> {
  * Triggered when a recipient marks an email as spam
  */
 async function handleEmailComplained(data: EmailEventData): Promise<void> {
-  console.log(`Email complained: ${data.email_id} by ${data.to.join(', ')}, type: ${data.complaint_type}`);
+  logger.error(`Email complained: ${data.email_id} by ${data.to.join(', ')}, type: ${data.complaint_type}`);
   
   try {
     // Update database with complaint information
@@ -348,7 +359,7 @@ async function handleEmailComplained(data: EmailEventData): Promise<void> {
     await checkComplaintRateThreshold();
     
   } catch (error) {
-    console.error('Error handling email.complained event:', error);
+    logger.error('Error handling email.complained event', error);
   }
   
   // TODO: Alert administrators of spam complaint
@@ -363,7 +374,7 @@ async function handleEmailComplained(data: EmailEventData): Promise<void> {
  * Triggered when a recipient unsubscribes from emails
  */
 async function handleEmailUnsubscribed(data: EmailEventData): Promise<void> {
-  console.log(`Email unsubscribed: ${data.email_id} by ${data.to.join(', ')}`);
+  logger.info(`Email unsubscribed: ${data.email_id} by ${data.to.join(', ')}`);
   
   try {
     // Record the event for analytics
@@ -383,11 +394,86 @@ async function handleEmailUnsubscribed(data: EmailEventData): Promise<void> {
     await trackEmailMetrics('unsubscribed');
     
   } catch (error) {
-    console.error('Error handling email.unsubscribed event:', error);
+    logger.error('Error handling email.unsubscribed event', error);
   }
   
   // TODO: Send confirmation email to user
   // TODO: Add to suppression list for future campaigns
+}
+
+/**
+ * Idempotency helpers for webhook processing
+ */
+
+// In-memory cache for recent webhook IDs (for quick duplicate detection)
+const processedWebhooks = new Map<string, { timestamp: number; eventType: string }>();
+
+/**
+ * Check if a webhook has already been processed
+ */
+async function isDuplicateWebhook(svixId: string): Promise<boolean> {
+  // First check in-memory cache for recent duplicates
+  const cached = processedWebhooks.get(svixId);
+  if (cached) {
+    // Remove entries older than 1 hour
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    if (cached.timestamp > oneHourAgo) {
+      return true;
+    } else {
+      processedWebhooks.delete(svixId);
+    }
+  }
+
+  // Check database for older duplicates
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('webhook_events')
+      .select('id')
+      .eq('svix_id', svixId)
+      .single();
+    
+    return !!data;
+  } catch (error) {
+    // If table doesn't exist or other error, assume not duplicate
+    return false;
+  }
+}
+
+/**
+ * Mark a webhook as processed
+ */
+async function markWebhookProcessed(svixId: string, eventType: string): Promise<void> {
+  // Add to in-memory cache
+  processedWebhooks.set(svixId, {
+    timestamp: Date.now(),
+    eventType
+  });
+
+  // Clean up old entries periodically
+  if (processedWebhooks.size > 1000) {
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    for (const [id, data] of processedWebhooks.entries()) {
+      if (data.timestamp < oneHourAgo) {
+        processedWebhooks.delete(id);
+      }
+    }
+  }
+
+  // Store in database if table exists
+  try {
+    const supabase = await createClient();
+    await supabase
+      .from('webhook_events')
+      .insert({
+        svix_id: svixId,
+        event_type: eventType,
+        processed_at: new Date().toISOString()
+      });
+  } catch (error) {
+    // If table doesn't exist, that's okay - we have in-memory cache
+    // Don't log this in production as it's expected during initial setup
+  }
 }
 
 /**
@@ -396,11 +482,21 @@ async function handleEmailUnsubscribed(data: EmailEventData): Promise<void> {
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // Rate limiting - limit to 100 requests per minute per IP
+    const clientIP = getClientIP(request);
+    if (!checkRateLimit(clientIP, 100, 60000)) {
+      logger.warn(`Rate limit exceeded for IP: ${clientIP}`);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded' },
+        { status: 429 }
+      );
+    }
+
     // Get the webhook signing secret from environment variables
     const webhookSecret = process.env.WEBHOOK_SECRET;
     
     if (!webhookSecret) {
-      console.error('WEBHOOK_SECRET environment variable is not set');
+      logger.error('WEBHOOK_SECRET environment variable is not set');
       return NextResponse.json(
         { error: 'Webhook secret not configured' },
         { status: 500 }
@@ -417,7 +513,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Validate that all required headers are present
     if (!svixId || !svixTimestamp || !svixSignature) {
-      console.error('Missing required Svix headers');
+      logger.error('Missing required Svix headers');
       return NextResponse.json(
         { error: 'Missing required webhook headers' },
         { status: 400 }
@@ -437,20 +533,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         'svix-signature': svixSignature,
       }) as WebhookPayload;
       
-      console.log('Webhook signature verified successfully');
+      logger.info('Webhook signature verified successfully', { 
+        eventType: payload.type,
+        svixId 
+      });
     } catch (error) {
-      console.error('Webhook signature verification failed:', error);
+      logger.error('Webhook signature verification failed', error);
       return NextResponse.json(
         { error: 'Invalid webhook signature' },
         { status: 401 }
       );
     }
 
+    // Additional idempotency check using svix-id
+    if (await isDuplicateWebhook(svixId)) {
+      logger.info(`Duplicate webhook detected: ${svixId}`, { eventType: payload.type });
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Webhook already processed',
+        eventType: payload.type 
+      });
+    }
+
     // Process the verified webhook event
     try {
       await handleWebhookEvent(payload);
       
-      console.log(`Successfully processed webhook event: ${payload.type}`);
+      // Mark webhook as processed
+      await markWebhookProcessed(svixId, payload.type);
+      
+      logger.info(`Successfully processed webhook event: ${payload.type}`, { svixId });
       
       // Return success response
       return NextResponse.json({ 
@@ -460,11 +572,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
       
     } catch (eventError) {
-      console.error('Error processing webhook event:', eventError);
+      logger.error('Error processing webhook event', eventError);
       
-      // TODO: Consider whether to return 200 or 500 here based on your retry strategy
-      // Returning 500 will cause Resend to retry the webhook
-      // Returning 200 will acknowledge receipt even if processing failed
+      // Return 500 to trigger retry from Resend
       return NextResponse.json(
         { error: 'Error processing webhook event' },
         { status: 500 }
@@ -472,7 +582,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
   } catch (error) {
-    console.error('Unexpected error in webhook handler:', error);
+    logger.error('Unexpected error in webhook handler', error);
     
     return NextResponse.json(
       { error: 'Internal server error' },

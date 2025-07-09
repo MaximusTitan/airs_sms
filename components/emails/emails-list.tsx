@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { Email, EmailTemplate, Lead } from "@/lib/types/database";
+import { EmailCampaignAnalytics } from "@/lib/email-analytics";
 import { safeFormatDate } from "@/lib/utils/date-utils";
 import { 
   Mail, 
@@ -21,21 +22,63 @@ import {
   AlertCircle, 
   XCircle, 
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  MousePointer,
+  TrendingUp,
+  AlertTriangle
 } from "lucide-react";
 
 interface EmailWithRecipients extends Email {
   recipients?: Pick<Lead, 'id' | 'name' | 'email' | 'status'>[];
+  analytics?: EmailCampaignAnalytics;
 }
 
 interface EmailsListProps {
   emails: EmailWithRecipients[];
   templates: EmailTemplate[];
   fromEmail?: string;
+  initialAnalytics?: Record<string, EmailCampaignAnalytics>;
 }
 
-export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.com' }: EmailsListProps) {
+export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.com', initialAnalytics = {} }: EmailsListProps) {
   const [expandedEmails, setExpandedEmails] = useState<string[]>([]);
+  const [emailAnalytics, setEmailAnalytics] = useState<Record<string, EmailCampaignAnalytics>>(initialAnalytics);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  // Load analytics for sent emails
+  useEffect(() => {
+    const sentEmails = emails.filter(email => email.status === 'sent');
+    if (sentEmails.length > 0) {
+      loadEmailAnalytics(sentEmails.map(email => email.id));
+    }
+  }, [emails]);
+
+  const loadEmailAnalytics = async (emailIds: string[]) => {
+    if (emailIds.length === 0) return;
+    
+    setLoadingAnalytics(true);
+    try {
+      const response = await fetch('/api/analytics/email/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailIds })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const analyticsMap = data.analytics.reduce((acc: Record<string, EmailCampaignAnalytics>, analytics: EmailCampaignAnalytics) => {
+          acc[analytics.id] = analytics;
+          return acc;
+        }, {});
+        setEmailAnalytics(analyticsMap);
+      }
+    } catch (error) {
+      console.error('Failed to load email analytics:', error);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
 
   const toggleExpanded = (emailId: string) => {
     setExpandedEmails(prev => 
@@ -91,6 +134,40 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
     }
   };
 
+  const renderAnalyticsMetrics = (emailId: string) => {
+    const analytics = emailAnalytics[emailId];
+    if (!analytics || analytics.totalSent === 0) return null;
+    
+    return (
+      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+        <div className="flex items-center gap-1">
+          <CheckCircle className="h-3 w-3 text-green-600" />
+          <span>{analytics.deliveryRate.toFixed(1)}% delivered</span>
+        </div>
+        {analytics.delivered > 0 && (
+          <>
+            <div className="flex items-center gap-1">
+              <Eye className="h-3 w-3 text-blue-600" />
+              <span>{analytics.openRate.toFixed(1)}% opened</span>
+            </div>
+            {analytics.clicked > 0 && (
+              <div className="flex items-center gap-1">
+                <MousePointer className="h-3 w-3 text-purple-600" />
+                <span>{analytics.clickRate.toFixed(1)}% clicked</span>
+              </div>
+            )}
+          </>
+        )}
+        {(analytics.bounced > 0 || analytics.complained > 0) && (
+          <div className="flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3 text-orange-600" />
+            <span>{(analytics.bounceRate + analytics.complaintRate).toFixed(1)}% issues</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Overview */}
@@ -119,15 +196,19 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
             </div>
           </div>
         </Card>
-          <Card className="p-4">
+        
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Eye className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Drafts</p>
+              <p className="text-sm text-muted-foreground">Avg Open Rate</p>
               <p className="text-lg font-semibold">
-                {emails.filter(e => e.status === 'draft').length}
+                {Object.values(emailAnalytics).length > 0 
+                  ? `${(Object.values(emailAnalytics).reduce((sum, a) => sum + a.openRate, 0) / Object.values(emailAnalytics).length).toFixed(1)}%`
+                  : '--'
+                }
               </p>
             </div>
           </div>
@@ -136,38 +217,16 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-100 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
+              <MousePointer className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Partial</p>
+              <p className="text-sm text-muted-foreground">Avg Click Rate</p>
               <p className="text-lg font-semibold">
-                {emails.filter(e => e.status === 'partially_sent').length}
+                {Object.values(emailAnalytics).length > 0 
+                  ? `${(Object.values(emailAnalytics).reduce((sum, a) => sum + a.clickRate, 0) / Object.values(emailAnalytics).length).toFixed(1)}%`
+                  : '--'
+                }
               </p>
-            </div>
-          </div>
-        </Card>
-          <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Failed</p>
-              <p className="text-lg font-semibold">
-                {emails.filter(e => e.status === 'failed').length}
-              </p>
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Mail className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Templates</p>
-              <p className="text-lg font-semibold">{templates.length}</p>
             </div>
           </div>
         </Card>
@@ -245,6 +304,18 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
                                     : safeFormatDate(email.created_at, 'PPpp')}
                                 </span>
                               </div>
+                              
+                              {/* Show analytics for sent emails */}
+                              {email.status === 'sent' && (
+                                loadingAnalytics ? (
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+                                    <span>Loading analytics...</span>
+                                  </div>
+                                ) : (
+                                  renderAnalyticsMetrics(email.id)
+                                )
+                              )}
                             </div>
                           </div>
                           
@@ -292,6 +363,35 @@ export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.
                               </span>
                             </div>
                           </div>
+                          
+                          {/* Email Analytics Section */}
+                          {email.status === 'sent' && emailAnalytics[email.id] && (
+                            <div>
+                              <h4 className="font-medium mb-2">Email Performance:</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-muted rounded border">
+                                <div className="text-center">
+                                  <div className="text-lg font-semibold text-green-600">{emailAnalytics[email.id].deliveryRate.toFixed(1)}%</div>
+                                  <div className="text-xs text-muted-foreground">Delivered</div>
+                                  <div className="text-xs text-muted-foreground">({emailAnalytics[email.id].delivered}/{emailAnalytics[email.id].totalSent})</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-lg font-semibold text-blue-600">{emailAnalytics[email.id].openRate.toFixed(1)}%</div>
+                                  <div className="text-xs text-muted-foreground">Opened</div>
+                                  <div className="text-xs text-muted-foreground">({emailAnalytics[email.id].opened})</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-lg font-semibold text-purple-600">{emailAnalytics[email.id].clickRate.toFixed(1)}%</div>
+                                  <div className="text-xs text-muted-foreground">Clicked</div>
+                                  <div className="text-xs text-muted-foreground">({emailAnalytics[email.id].clicked})</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-lg font-semibold text-orange-600">{(emailAnalytics[email.id].bounceRate + emailAnalytics[email.id].complaintRate).toFixed(1)}%</div>
+                                  <div className="text-xs text-muted-foreground">Issues</div>
+                                  <div className="text-xs text-muted-foreground">({emailAnalytics[email.id].bounced + emailAnalytics[email.id].complained})</div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           
                           <div>
                             <h4 className="font-medium mb-2">Email Content:</h4>

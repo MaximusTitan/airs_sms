@@ -218,8 +218,97 @@ create table public.unsubscribes (
   email text not null,
   reason text null,
   created_at timestamp with time zone null default now(),
+  ip_address text null,
+  user_agent text null,
   constraint unsubscribes_pkey primary key (id),
   constraint unsubscribes_email_key unique (email)
 ) TABLESPACE pg_default;
 
 create index IF not exists idx_unsubscribes_email on public.unsubscribes using btree (email) TABLESPACE pg_default;
+
+-- Function to upsert email metrics (used by webhook handlers)
+CREATE OR REPLACE FUNCTION upsert_email_metrics(
+  p_date date,
+  p_event_type text
+) RETURNS void AS $$
+BEGIN
+  INSERT INTO email_metrics (date, event_type, count)
+  VALUES (p_date, p_event_type, 1)
+  ON CONFLICT (date, event_type)
+  DO UPDATE SET 
+    count = email_metrics.count + 1,
+    updated_at = now();
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add indexes for better performance on email analytics queries
+CREATE INDEX IF NOT EXISTS idx_email_events_email_id_type_created ON public.email_events 
+USING btree (email_id, event_type, created_at);
+
+-- Add GIN index for JSONB data in email_events for better performance on data queries
+CREATE INDEX IF NOT EXISTS idx_email_events_data_gin ON public.email_events 
+USING gin (data);
+
+-- Email metrics table for daily analytics tracking
+CREATE TABLE IF NOT EXISTS email_metrics (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    date DATE NOT NULL,
+    event_type TEXT NOT NULL,
+    count INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(date, event_type)
+);
+
+-- Index for efficient querying
+CREATE INDEX IF NOT EXISTS idx_email_metrics_date_event ON email_metrics(date, event_type);
+
+-- Unsubscribes table for tracking user unsubscriptions
+CREATE TABLE IF NOT EXISTS unsubscribes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    ip_address TEXT,
+    user_agent TEXT
+);
+
+-- Index for efficient email lookups
+CREATE INDEX IF NOT EXISTS idx_unsubscribes_email ON unsubscribes(email);
+
+-- Webhook events tracking table for idempotency
+CREATE TABLE IF NOT EXISTS webhook_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    svix_id TEXT NOT NULL UNIQUE,
+    event_type TEXT NOT NULL,
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Index for efficient lookups
+CREATE INDEX IF NOT EXISTS idx_webhook_events_svix_id ON webhook_events(svix_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_processed_at ON webhook_events(processed_at);
+
+-- Enable RLS
+ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
+
+-- RLS policy for webhook_events
+CREATE POLICY "webhook_events_policy" ON webhook_events
+FOR ALL USING (true);
+
+-- Cleanup function to remove old webhook events (older than 7 days)
+CREATE OR REPLACE FUNCTION cleanup_old_webhook_events() RETURNS VOID AS $$
+BEGIN
+    DELETE FROM webhook_events 
+    WHERE processed_at < NOW() - INTERVAL '7 days';
+END;
+$$ LANGUAGE plpgsql;

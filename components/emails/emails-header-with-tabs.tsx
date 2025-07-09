@@ -14,6 +14,8 @@ interface EmailsHeaderProps {
   onTabChange?: (tab: 'emails' | 'analytics') => void;
   onRefresh?: () => void | Promise<void>;
   isRefreshing?: boolean;
+  avgOpenRate?: number;
+  avgClickRate?: number;
 }
 
 export function EmailsHeader({ 
@@ -23,7 +25,9 @@ export function EmailsHeader({
   currentTab = 'emails',
   onTabChange,
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  avgOpenRate,
+  avgClickRate
 }: EmailsHeaderProps) {
   const tabs = [
     {
@@ -91,6 +95,16 @@ export function EmailsHeader({
               <Users className="h-3 w-3" />
               {totalLeads} leads
             </Badge>
+            {avgOpenRate !== undefined && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                📊 {avgOpenRate.toFixed(1)}% open rate
+              </Badge>
+            )}
+            {avgClickRate !== undefined && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                🖱️ {avgClickRate.toFixed(1)}% click rate
+              </Badge>
+            )}
             <Badge variant="secondary" className="flex items-center gap-1">
               <Target className="h-3 w-3" />
               {conversionRate.toFixed(1)}% conversion

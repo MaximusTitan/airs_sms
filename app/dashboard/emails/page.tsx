@@ -19,6 +19,7 @@ function EmailsPageContent() {
   const [emailsData, setEmailsData] = useState<{
     emailsWithLeads: EmailWithRecipients[];
     templates: EmailTemplate[];
+    emailAnalytics?: Record<string, any>;
   } | null>(null);
   const [analyticsData, setAnalyticsData] = useState<{
     analytics: EmailAnalytics;
@@ -51,16 +52,42 @@ function EmailsPageContent() {
       const emailsData = await emailsResponse.json();
       const templatesData = await templatesResponse.json();
 
+      // Load analytics for sent emails
+      const sentEmails = (emailsData.emails || []).filter((email: EmailWithRecipients) => email.status === 'sent');
+      let emailAnalytics = {};
+      
+      if (sentEmails.length > 0) {
+        try {
+          const analyticsResponse = await fetch('/api/analytics/email/campaigns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ emailIds: sentEmails.map((email: EmailWithRecipients) => email.id) })
+          });
+          
+          if (analyticsResponse.ok) {
+            const analyticsData = await analyticsResponse.json();
+            emailAnalytics = analyticsData.analytics.reduce((acc: Record<string, any>, analytics: any) => {
+              acc[analytics.id] = analytics;
+              return acc;
+            }, {});
+          }
+        } catch (error) {
+          console.error('Failed to load email analytics:', error);
+        }
+      }
+
       setEmailsData({
         emailsWithLeads: emailsData.emails || [],
-        templates: templatesData || []
+        templates: templatesData || [],
+        emailAnalytics
       });
     } catch (error) {
       console.error('Error loading emails data:', error);
       // Set empty data on error
       setEmailsData({
         emailsWithLeads: [],
-        templates: []
+        templates: [],
+        emailAnalytics: {}
       });
     } finally {
       setLoading(false);
@@ -112,6 +139,16 @@ function EmailsPageContent() {
   const sentEmails = emailsData?.emailsWithLeads?.filter((email: EmailWithRecipients) => email.status === 'sent').length || 0;
   const totalLeads = emailsData?.emailsWithLeads?.reduce((acc: number, email: EmailWithRecipients) => acc + (email.recipients?.length || 0), 0) || 0;
   const conversionRate = totalLeads > 0 ? (sentEmails / totalLeads) * 100 : 0;
+  
+  // Calculate average analytics from email analytics
+  const emailAnalytics = emailsData?.emailAnalytics || {};
+  const analyticsValues = Object.values(emailAnalytics);
+  const avgOpenRate = analyticsValues.length > 0 
+    ? analyticsValues.reduce((sum: number, a: any) => sum + a.openRate, 0) / analyticsValues.length 
+    : undefined;
+  const avgClickRate = analyticsValues.length > 0 
+    ? analyticsValues.reduce((sum: number, a: any) => sum + a.clickRate, 0) / analyticsValues.length 
+    : undefined;
 
   if (loading) {
     return (
@@ -159,6 +196,8 @@ function EmailsPageContent() {
         onTabChange={handleTabChange}
         onRefresh={loadEmailsData}
         isRefreshing={loading}
+        avgOpenRate={avgOpenRate}
+        avgClickRate={avgClickRate}
       />
 
       {currentTab === 'emails' && (
@@ -167,6 +206,7 @@ function EmailsPageContent() {
           emails={(emailsData?.emailsWithLeads || []) as any}
           templates={emailsData?.templates || []}
           fromEmail={process.env.NEXT_PUBLIC_FROM_EMAIL || 'AIRS@aireadyschool.com'}
+          initialAnalytics={emailAnalytics}
         />
       )}
 

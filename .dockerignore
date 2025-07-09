@@ -1,0 +1,65 @@
+# Dependency directories
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Development files
+.git/
+.gitignore
+*.md
+!README.md
+.env*.local
+.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+*.test.*
+*.spec.*
+__tests__/
+
+# Build files
+.next/
+out/
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Development utilities
+**/debug/
+**/webhook-test.*
+*.debug.*
+
+# Documentation
+docs/
+notes/
+
+# Cache
+.cache/
+.parcel-cache/

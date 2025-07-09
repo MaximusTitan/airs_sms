@@ -516,7 +516,7 @@ export function LeadsHeader({ selectedLeads = [] }: LeadsHeaderProps) {
         return hasName || hasEmail || hasFormData;
       });
 
-      console.log('Processed leads:', leads); // Debug log
+      // Debug log removed for production
 
       if (leads.length === 0) {
         alert('No valid leads found. Please ensure your CSV has name columns or meaningful data.');

@@ -3,12 +3,18 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:prod": "NODE_ENV=production next build",
     "start": "next start",
+    "start:prod": "NODE_ENV=production next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
     "analyze": "cross-env ANALYZE=true next build",
     "build:analyze": "npm run analyze",
     "perf:lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html",
-    "perf:bundle": "npm run build && npx next-bundle-analyzer"
+    "perf:bundle": "npm run build && npx next-bundle-analyzer",
+    "clean": "rimraf .next out node_modules/.cache",
+    "type-check": "tsc --noEmit",
+    "predeployment-check": "npm run type-check && npm run lint && npm run build:prod"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

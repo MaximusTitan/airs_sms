@@ -85,6 +85,27 @@ export interface LeadEngagementAnalytics {
 
 }
 
+export interface EmailCampaignAnalytics {
+  id: string;
+  subject: string;
+  status: string;
+  sent_at: string | null;
+  totalSent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  complained: number;
+  failed: number;
+  unsubscribed: number;
+  deliveryRate: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  complaintRate: number;
+  unsubscribeRate: number;
+}
+
 /**
  * Get comprehensive email analytics for a date range
  */
@@ -98,7 +119,7 @@ export async function getEmailAnalytics(
   // Base query for email events - use proper datetime ranges
   let eventsQuery = supabase
     .from('email_events')
-    .select('event_type, created_at')
+    .select('email_id, event_type, created_at, data')
     .gte('created_at', startDate + 'T00:00:00Z')
     .lte('created_at', endDate + 'T23:59:59Z');
   
@@ -141,11 +162,45 @@ export async function getEmailAnalytics(
     throw error;
   }
   
-  // Count events by type
-  const eventCounts = events?.reduce((acc, event) => {
-    acc[event.event_type] = (acc[event.event_type] || 0) + 1;
+  // Group events by email_id and event_type to count unique events per email
+  const eventsByEmailAndType = events?.reduce((acc, event) => {
+    const key = `${event.email_id}_${event.event_type}`;
+    if (!acc[key]) {
+      acc[key] = {
+        email_id: event.email_id,
+        event_type: event.event_type,
+        count: 0,
+        recipients: new Set()
+      };
+    }
+    
+    // For opens and clicks, try to extract recipient from data
+    // This assumes Resend includes recipient info in the event data
+    const recipient = event.data?.to || event.data?.recipient;
+    if (recipient) {
+      if (Array.isArray(recipient)) {
+        recipient.forEach(r => acc[key].recipients.add(r));
+      } else {
+        acc[key].recipients.add(recipient);
+      }
+    }
+    acc[key].count++;
     return acc;
-  }, {} as Record<string, number>) || {};
+  }, {} as Record<string, any>) || {};
+  
+  // Count unique events - for opens/clicks count unique recipients, for others count occurrences
+  const eventCounts = Object.values(eventsByEmailAndType).reduce((acc, eventGroup: any) => {
+    const eventType = eventGroup.event_type;
+    
+    // For open and click events, count unique recipients
+    if (eventType === 'opened' || eventType === 'clicked') {
+      acc[eventType] = (acc[eventType] || 0) + eventGroup.recipients.size;
+    } else {
+      // For other events, count total occurrences
+      acc[eventType] = (acc[eventType] || 0) + eventGroup.count;
+    }
+    return acc;
+  }, {} as Record<string, number>);
   
   const totalSent = eventCounts['sent'] || 0;
   const delivered = eventCounts['delivered'] || 0;
@@ -553,4 +608,84 @@ export async function updateDailyMetrics(eventType: string): Promise<void> {
     console.error('Error updating daily metrics:', error);
     // Don't throw here as this is non-critical
   }
+}
+
+/**
+ * Get analytics for individual email campaigns
+ */
+export async function getEmailCampaignAnalytics(
+  emailIds: string[]
+): Promise<EmailCampaignAnalytics[]> {
+  if (emailIds.length === 0) return [];
+  
+  const supabase = await createClient();
+  
+  // Get emails with their events
+  const { data: emails, error } = await supabase
+    .from('emails')
+    .select(`
+      id,
+      subject,
+      status,
+      sent_at,
+      recipient_emails,
+      email_events(event_type, recipient_email)
+    `)
+    .in('id', emailIds);
+  
+  if (error) {
+    console.error('Error fetching email analytics:', error);
+    throw error;
+  }
+  
+  return emails?.map(email => {
+    const events = email.email_events || [];
+    const totalSent = Array.isArray(email.recipient_emails) ? email.recipient_emails.length : 0;
+    
+    // Count unique recipients for each event type to avoid inflation
+    const uniqueEventCounts = events.reduce((acc: Record<string, Set<string>>, event: { event_type: string, recipient_email: string }) => {
+      if (!acc[event.event_type]) {
+        acc[event.event_type] = new Set();
+      }
+      acc[event.event_type].add(event.recipient_email);
+      return acc;
+    }, {});
+    
+    const delivered = uniqueEventCounts['delivered']?.size || 0;
+    const opened = uniqueEventCounts['opened']?.size || 0;
+    const clicked = uniqueEventCounts['clicked']?.size || 0;
+    const bounced = uniqueEventCounts['bounced']?.size || 0;
+    const complained = uniqueEventCounts['complained']?.size || 0;
+    const failed = uniqueEventCounts['failed']?.size || 0;
+    const unsubscribed = uniqueEventCounts['unsubscribed']?.size || 0;
+    
+    // Calculate rates
+    const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
+    const openRate = delivered > 0 ? (opened / delivered) * 100 : 0;
+    const clickRate = delivered > 0 ? (clicked / delivered) * 100 : 0;
+    const bounceRate = totalSent > 0 ? (bounced / totalSent) * 100 : 0;
+    const complaintRate = delivered > 0 ? (complained / delivered) * 100 : 0;
+    const unsubscribeRate = delivered > 0 ? (unsubscribed / delivered) * 100 : 0;
+    
+    return {
+      id: email.id,
+      subject: email.subject,
+      status: email.status,
+      sent_at: email.sent_at,
+      totalSent,
+      delivered,
+      opened,
+      clicked,
+      bounced,
+      complained,
+      failed,
+      unsubscribed,
+      deliveryRate,
+      openRate,
+      clickRate,
+      bounceRate,
+      complaintRate,
+      unsubscribeRate
+    };
+  }) || [];
 }
