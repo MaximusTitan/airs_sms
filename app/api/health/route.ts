@@ -14,7 +14,7 @@ export async function GET() {
     let envStatus = 'healthy';
     try {
       validateEnvironment();
-    } catch (error) {
+    } catch {
       envStatus = 'unhealthy';
     }
 
@@ -26,7 +26,7 @@ export async function GET() {
       const supabase = await createClient();
       await supabase.from('email_events').select('id').limit(1);
       dbLatency = Date.now() - dbStart;
-    } catch (error) {
+    } catch {
       dbStatus = 'unhealthy';
     }
 
@@ -55,7 +55,7 @@ export async function GET() {
       status: isHealthy ? 200 : 503
     });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),

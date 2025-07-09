@@ -11,7 +11,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog";
-import { Email, EmailTemplate, Lead } from "@/lib/types/database";
+import { Email, Lead } from "@/lib/types/database";
 import { EmailCampaignAnalytics } from "@/lib/email-analytics";
 import { safeFormatDate } from "@/lib/utils/date-utils";
 import { 
@@ -25,7 +25,6 @@ import {
   ChevronRight,
   Eye,
   MousePointer,
-  TrendingUp,
   AlertTriangle
 } from "lucide-react";
 
@@ -36,12 +35,11 @@ interface EmailWithRecipients extends Email {
 
 interface EmailsListProps {
   emails: EmailWithRecipients[];
-  templates: EmailTemplate[];
   fromEmail?: string;
   initialAnalytics?: Record<string, EmailCampaignAnalytics>;
 }
 
-export function EmailsList({ emails, templates, fromEmail = 'AIRS@aireadyschool.com', initialAnalytics = {} }: EmailsListProps) {
+export function EmailsList({ emails, fromEmail = 'AIRS@aireadyschool.com', initialAnalytics = {} }: EmailsListProps) {
   const [expandedEmails, setExpandedEmails] = useState<string[]>([]);
   const [emailAnalytics, setEmailAnalytics] = useState<Record<string, EmailCampaignAnalytics>>(initialAnalytics);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);

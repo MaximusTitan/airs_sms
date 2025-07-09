@@ -94,12 +94,12 @@ export function getClientIP(request: NextRequest): string {
 /**
  * Sanitize log data to prevent sensitive information leakage
  */
-export function sanitizeLogData(data: any): any {
+export function sanitizeLogData(data: unknown): unknown {
   if (typeof data !== 'object' || data === null) {
     return data;
   }
 
-  const sanitized = { ...data };
+  const sanitized = { ...data as Record<string, unknown> };
   
   // Remove sensitive fields
   const sensitiveFields = [
@@ -120,14 +120,14 @@ export function sanitizeLogData(data: any): any {
  * Production-safe logger
  */
 export const logger = {
-  info: (message: string, data?: any) => {
+  info: (message: string, data?: unknown) => {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[INFO] ${message}`, data ? sanitizeLogData(data) : '');
     }
     // In production, send to logging service like Datadog, LogRocket, etc.
   },
   
-  error: (message: string, error?: Error | any) => {
+  error: (message: string, error?: Error | unknown) => {
     if (process.env.NODE_ENV === 'development') {
       console.error(`[ERROR] ${message}`, error);
     }
@@ -135,7 +135,7 @@ export const logger = {
     // Sentry.captureException(error, { extra: { message } });
   },
   
-  warn: (message: string, data?: any) => {
+  warn: (message: string, data?: unknown) => {
     if (process.env.NODE_ENV === 'development') {
       console.warn(`[WARN] ${message}`, data ? sanitizeLogData(data) : '');
     }

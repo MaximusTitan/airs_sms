@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { EmailsHeader } from "@/components/emails/emails-header-with-tabs";
 import { EmailsList } from "@/components/emails/emails-list";
 import { EmailAnalyticsDashboard } from "@/components/emails/email-analytics-dashboard";
-import { EmailAnalytics, EmailMetricsByDate, EmailEngagementTrend } from "@/lib/email-analytics";
+import { EmailAnalytics, EmailMetricsByDate, EmailEngagementTrend, EmailCampaignAnalytics } from "@/lib/email-analytics";
 import { Email, EmailTemplate } from "@/lib/types/database";
 
 interface EmailWithRecipients extends Email {
@@ -19,7 +19,7 @@ function EmailsPageContent() {
   const [emailsData, setEmailsData] = useState<{
     emailsWithLeads: EmailWithRecipients[];
     templates: EmailTemplate[];
-    emailAnalytics?: Record<string, any>;
+    emailAnalytics?: Record<string, EmailCampaignAnalytics>;
   } | null>(null);
   const [analyticsData, setAnalyticsData] = useState<{
     analytics: EmailAnalytics;
@@ -66,7 +66,7 @@ function EmailsPageContent() {
           
           if (analyticsResponse.ok) {
             const analyticsData = await analyticsResponse.json();
-            emailAnalytics = analyticsData.analytics.reduce((acc: Record<string, any>, analytics: any) => {
+            emailAnalytics = analyticsData.analytics.reduce((acc: Record<string, EmailCampaignAnalytics>, analytics: EmailCampaignAnalytics) => {
               acc[analytics.id] = analytics;
               return acc;
             }, {});
@@ -144,10 +144,10 @@ function EmailsPageContent() {
   const emailAnalytics = emailsData?.emailAnalytics || {};
   const analyticsValues = Object.values(emailAnalytics);
   const avgOpenRate = analyticsValues.length > 0 
-    ? analyticsValues.reduce((sum: number, a: any) => sum + a.openRate, 0) / analyticsValues.length 
+    ? analyticsValues.reduce((sum: number, a: EmailCampaignAnalytics) => sum + a.openRate, 0) / analyticsValues.length 
     : undefined;
   const avgClickRate = analyticsValues.length > 0 
-    ? analyticsValues.reduce((sum: number, a: any) => sum + a.clickRate, 0) / analyticsValues.length 
+    ? analyticsValues.reduce((sum: number, a: EmailCampaignAnalytics) => sum + a.clickRate, 0) / analyticsValues.length 
     : undefined;
 
   if (loading) {
@@ -204,7 +204,6 @@ function EmailsPageContent() {
         <EmailsList 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           emails={(emailsData?.emailsWithLeads || []) as any}
-          templates={emailsData?.templates || []}
           fromEmail={process.env.NEXT_PUBLIC_FROM_EMAIL || 'AIRS@aireadyschool.com'}
           initialAnalytics={emailAnalytics}
         />

@@ -186,10 +186,10 @@ export async function getEmailAnalytics(
     }
     acc[key].count++;
     return acc;
-  }, {} as Record<string, any>) || {};
+  }, {} as Record<string, { email_id: string; event_type: string; recipients: Set<string>; count: number }>) || {};
   
   // Count unique events - for opens/clicks count unique recipients, for others count occurrences
-  const eventCounts = Object.values(eventsByEmailAndType).reduce((acc, eventGroup: any) => {
+  const eventCounts = Object.values(eventsByEmailAndType).reduce((acc, eventGroup) => {
     const eventType = eventGroup.event_type;
     
     // For open and click events, count unique recipients

@@ -10,7 +10,7 @@ import {
   checkBounceRateThreshold,
   checkComplaintRateThreshold
 } from '@/lib/webhook-utils';
-import { validateEnvironment, checkRateLimit, getClientIP, logger } from '@/lib/config';
+import { checkRateLimit, getClientIP, logger } from '@/lib/config';
 import { createClient } from '@/lib/supabase/server';
 
 // Type definitions for webhook payloads
@@ -189,7 +189,7 @@ async function handleEmailFailed(data: EmailEventData): Promise<void> {
     await updateEmailStatus(data.email_id, {
       status: 'failed',
       failed_at: new Date().toISOString(),
-      failure_reason: (data as any).reason || 'Unknown'
+      failure_reason: (data as EmailEventData & { reason?: string }).reason || 'Unknown'
     });
     
     // Record the event for analytics
@@ -434,7 +434,7 @@ async function isDuplicateWebhook(svixId: string): Promise<boolean> {
       .single();
     
     return !!data;
-  } catch (error) {
+  } catch {
     // If table doesn't exist or other error, assume not duplicate
     return false;
   }
@@ -470,7 +470,7 @@ async function markWebhookProcessed(svixId: string, eventType: string): Promise<
         event_type: eventType,
         processed_at: new Date().toISOString()
       });
-  } catch (error) {
+  } catch {
     // If table doesn't exist, that's okay - we have in-memory cache
     // Don't log this in production as it's expected during initial setup
   }

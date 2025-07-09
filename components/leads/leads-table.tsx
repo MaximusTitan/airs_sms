@@ -508,10 +508,9 @@ export function LeadsTable({
   // Bulk action handlers
   const handleSendEmail = () => {
     if (selectedLeads.length > 0) {
-      const leadIds = selectedLeads.join(",");
       // Navigate to email compose page with selected leads
       // This would be handled by the parent component typically
-      // Send email to leads: leadIds
+      // Send email to leads: selectedLeads.join(",")
     }
   };
 
